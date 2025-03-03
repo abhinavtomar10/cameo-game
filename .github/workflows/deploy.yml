@@ -1,0 +1,38 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+          
+      - name: Install Python dependencies
+        run: |
+          cd cameo_backend
+          pip install -r requirements.txt
+          
+      - name: Build React frontend
+        run: |
+          cd cameo_frontend
+          npm install
+          npm run build
+          
+      - name: Collect static files
+        run: |
+          cd cameo_backend
+          python manage.py collectstatic --noinput
+          
+      - name: Deploy to Railway
+        uses: bervProject/railway-deploy@v1
+        with:
+          railway-token: ${{ secrets.RAILWAY_TOKEN }}
+          service-name: cameo-game 
