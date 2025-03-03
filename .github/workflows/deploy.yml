@@ -35,8 +35,16 @@ jobs:
         run: |
           curl -fsSL https://railway.app/install.sh | sh
           
+      - name: Login to Railway
+        run: |
+          railway login --browserless
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          
       - name: Deploy to Railway
         run: |
-          railway up
+          cd cameo_backend
+          railway up --service cameo-game
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }} 
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          PYTHONUNBUFFERED: 1 
