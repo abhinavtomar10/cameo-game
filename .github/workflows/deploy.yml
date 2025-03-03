@@ -46,7 +46,12 @@ jobs:
         run: |
           which railway
           railway --version
-          railway whoami
+          
+      - name: Authenticate with Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo $RAILWAY_TOKEN | railway login
           
       - name: Deploy to Railway
         env:
