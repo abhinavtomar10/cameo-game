@@ -31,8 +31,12 @@ jobs:
           cd cameo_backend
           python manage.py collectstatic --noinput
           
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          
       - name: Deploy to Railway
-        uses: bervProject/railway-deploy@v1
-        with:
-          railway-token: ${{ secrets.RAILWAY_TOKEN }}
-          service-name: cameo-game 
+        run: |
+          railway up
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }} 
