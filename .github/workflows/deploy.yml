@@ -52,14 +52,15 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           mkdir -p ~/.railway
-          echo $RAILWAY_TOKEN > ~/.railway/auth.json
+          echo "{\"token\": \"$RAILWAY_TOKEN\"}" > ~/.railway/auth.json
+          export RAILWAY_TOKEN="$RAILWAY_TOKEN"
           
       - name: Link Railway Project
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           cd cameo_backend
-          railway link
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
           
       - name: Deploy to Railway
         env:
