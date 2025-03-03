@@ -10,6 +10,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Debug Directory Structure
+        run: |
+          pwd
+          ls -la
+          echo "Checking cameo_backend directory:"
+          ls -la cameo_backend || echo "cameo_backend directory not found"
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -34,6 +41,12 @@ jobs:
       - name: Install Railway CLI
         run: |
           curl -fsSL https://railway.app/install.sh | sh
+          railway --version
+          
+      - name: Debug Railway CLI
+        run: |
+          which railway
+          railway --version
           
       - name: Login to Railway
         run: |
@@ -41,10 +54,18 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           
+      - name: Debug Railway Login
+        run: |
+          railway whoami
+          
       - name: Deploy to Railway
         run: |
           cd cameo_backend
-          railway up --service cameo-game
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          railway up --service cameo-game --debug
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          PYTHONUNBUFFERED: 1 
+          PYTHONUNBUFFERED: 1
+          RAILWAY_DEBUG: 1 
