@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
       
       - name: Debug Directory Structure
         run: |
@@ -39,9 +41,7 @@ jobs:
           python manage.py collectstatic --noinput
           
       - name: Install Railway CLI
-        run: |
-          curl -fsSL https://railway.app/install.sh | sh
-          railway --version
+        run: npm install -g @railway/cli
           
       - name: Debug Railway CLI
         run: |
@@ -59,12 +59,9 @@ jobs:
           railway whoami
           
       - name: Deploy to Railway
-        run: |
-          cd cameo_backend
-          echo "Current directory: $(pwd)"
-          echo "Directory contents:"
-          ls -la
-          railway up --service cameo-game --debug
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --service cameo-game --debug
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           PYTHONUNBUFFERED: 1
