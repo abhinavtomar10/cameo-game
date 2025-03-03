@@ -41,10 +41,18 @@ jobs:
           
       - name: Install Railway CLI
         run: npm install -g @railway/cli
+        
+      - name: Debug Railway CLI
+        run: |
+          which railway
+          railway --version
           
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_DEBUG: 1
+          RAILWAY_TIMEOUT: 300000
+          NODE_TLS_REJECT_UNAUTHORIZED: 0
         run: |
           cd cameo_backend
-          railway up 
+          railway up --service cameo-game --debug 
