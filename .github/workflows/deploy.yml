@@ -61,8 +61,6 @@ jobs:
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service cameo-game --debug
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           PYTHONUNBUFFERED: 1
-          RAILWAY_DEBUG: 1 
+          RAILWAY_DEBUG: 1
+        run: railway up --service cameo-game --debug 
