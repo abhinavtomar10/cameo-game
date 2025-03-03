@@ -54,6 +54,13 @@ jobs:
           mkdir -p ~/.railway
           echo $RAILWAY_TOKEN > ~/.railway/auth.json
           
+      - name: Link Railway Project
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          cd cameo_backend
+          railway link
+          
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -62,4 +69,4 @@ jobs:
           NODE_TLS_REJECT_UNAUTHORIZED: 0
         run: |
           cd cameo_backend
-          railway up --service cameo-game --verbose 
+          railway up --verbose 
