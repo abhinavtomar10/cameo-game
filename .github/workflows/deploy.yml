@@ -1,4 +1,4 @@
-name: Deploy to Railway
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -26,13 +26,19 @@ jobs:
           npm install
           npm run build
           
-      - name: Collect static files
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./cameo_frontend/build
+          
+      - name: Create backend deployment package
         run: |
           cd cameo_backend
-          python manage.py collectstatic --noinput
+          zip -r ../backend.zip . -x "*.pyc" "__pycache__/*" "venv/*" "*.env"
           
-      - name: Deploy to Railway
-        uses: bervProject/railway-deploy@v1
+      - name: Upload backend package
+        uses: actions/upload-artifact@v2
         with:
-          railway-token: ${{ secrets.RAILWAY_TOKEN }}
-          service-name: cameo-game 
+          name: backend-package
+          path: backend.zip 
