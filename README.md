@@ -57,43 +57,25 @@ python run_daphne.py
 
 ## Deployment
 
-This project is configured for deployment using GitHub Pages for the frontend and a separate backend hosting service.
+This project is configured for deployment on Railway.app using GitHub Actions.
 
-### Frontend Deployment (GitHub Pages)
-
-1. Push your code to the main branch of your GitHub repository
-2. Go to your repository settings
-3. Navigate to "Pages" in the left sidebar
-4. Under "Source", select "GitHub Actions"
-5. The frontend will be automatically deployed to `https://<your-username>.github.io/<repository-name>`
-
-### Backend Deployment
-
-The backend deployment package will be created as an artifact in your GitHub Actions workflow. You can download this package and deploy it to any hosting service that supports Python applications (e.g., Heroku, DigitalOcean, AWS, etc.).
-
-1. Go to your GitHub repository
-2. Click on "Actions"
-3. Select the latest workflow run
-4. Scroll down to "Artifacts"
-5. Download the "backend-package" zip file
-6. Deploy the package to your chosen hosting service
+1. Create a Railway account at https://railway.app
+2. Create a new project on Railway
+3. Get your Railway token from the Railway dashboard
+4. Add the Railway token to your GitHub repository secrets as `RAILWAY_TOKEN`
+5. Push your code to the main branch to trigger deployment
 
 ### Environment Variables
 
-Make sure to set up the following environment variables on your backend hosting service:
+Railway will automatically set up the following environment variables:
 - `DEBUG=False`
-- `ALLOWED_HOSTS=<your-domain>`
-- `CORS_ALLOWED_ORIGINS=https://<your-username>.github.io`
-- `REDIS_URL=<your-redis-url>`
+- `ALLOWED_HOSTS=<your-railway-domain>`
+- `CORS_ALLOWED_ORIGINS=https://<your-railway-domain>`
+- `REDIS_URL=<your-railway-redis-url>`
 
 ### Frontend Configuration
 
-After deployment, update the WebSocket connection URL in your frontend code to point to your backend server:
-
-```javascript
-// In cameo_frontend/src/App.js or similar
-const ws = new WebSocket('wss://<your-backend-domain>/ws/game/');
-```
+The frontend will automatically connect to the backend using the Railway domain. No additional configuration is needed.
 
 ## Game Rules
 
