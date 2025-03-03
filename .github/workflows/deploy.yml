@@ -46,6 +46,7 @@ jobs:
         run: |
           which railway
           railway --version
+          railway whoami
           
       - name: Deploy to Railway
         env:
@@ -55,4 +56,4 @@ jobs:
           NODE_TLS_REJECT_UNAUTHORIZED: 0
         run: |
           cd cameo_backend
-          railway up --service cameo-game --debug 
+          railway up --service cameo-game --verbose 
