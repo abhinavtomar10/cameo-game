@@ -29,7 +29,7 @@ jobs:
           
       - name: Build React frontend
         run: |
-          cd cameo_frontend
+          cd cameo_backend/cameo_frontend
           npm install
           npm run build
           
