@@ -52,12 +52,9 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           mkdir -p ~/.railway
-          echo "{\"token\": \"$RAILWAY_TOKEN\"}" > ~/.railway/auth.json
-          export RAILWAY_TOKEN="$RAILWAY_TOKEN"
-          echo "Verifying Railway auth file:"
-          cat ~/.railway/auth.json
-          echo "Checking Railway token environment variable:"
-          if [ -n "$RAILWAY_TOKEN" ]; then echo "RAILWAY_TOKEN is set"; else echo "RAILWAY_TOKEN is not set"; fi
+          echo "{\"token\":\"$RAILWAY_TOKEN\"}" > ~/.railway/config.json
+          chmod 600 ~/.railway/config.json
+          railway whoami || echo "Token verification failed"
           
       - name: Link Railway Project
         env:
@@ -66,9 +63,7 @@ jobs:
           cd cameo_backend
           echo "Current directory: $(pwd)"
           echo "Attempting to link project..."
-          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --environment production
-          echo "Project linked successfully"
-          railway status
+          railway link --yes ${{ secrets.RAILWAY_PROJECT_ID }}
           
       - name: Deploy to Railway
         env:
@@ -80,4 +75,4 @@ jobs:
           cd cameo_backend
           echo "Current directory: $(pwd)"
           echo "Starting deployment..."
-          railway up --verbose --detach 
+          railway up --verbose --detach --no-wait 
