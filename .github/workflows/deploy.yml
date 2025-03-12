@@ -63,7 +63,7 @@ jobs:
           cd cameo_backend
           echo "Current directory: $(pwd)"
           echo "Attempting to link project..."
-          railway link --yes ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
           
       - name: Deploy to Railway
         env:
@@ -75,4 +75,4 @@ jobs:
           cd cameo_backend
           echo "Current directory: $(pwd)"
           echo "Starting deployment..."
-          railway up --verbose --detach --no-wait 
+          railway up --service ${{ secrets.RAILWAY_SERVICE_NAME }} --detach 
