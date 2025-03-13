@@ -40,12 +40,17 @@ jobs:
           python manage.py collectstatic --noinput
           
       - name: Install Railway CLI
-        run: npm install -g @railway/cli
-        
+        run: |
+          npm install -g @railway/cli
+          echo "Adding npm global bin to PATH"
+          echo "export PATH=$PATH:$(npm config get prefix)/bin" >> $GITHUB_ENV
+          source $GITHUB_ENV
+          
       - name: Debug Railway CLI
         run: |
-          which railway
-          railway --version
+          echo "Current PATH: $PATH"
+          which railway || echo "railway not found in PATH"
+          railway --version || echo "railway version check failed"
           
       - name: Authenticate with Railway
         env:
