@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd cameo_backend && python manage.py collectstatic --noinput"
+buildCommand = "cd cameo_backend && pip install -r requirements.txt && cd cameo_frontend && npm install && npm run build && cd .. && python manage.py collectstatic --noinput"
 
 [deploy]
 startCommand = "cd cameo_backend && python manage.py migrate && daphne -b 0.0.0.0 -p $PORT cameo_backend.asgi:application"
@@ -11,4 +11,8 @@ restartPolicyMaxRetries = 10
 
 [deploy.env]
 DJANGO_SETTINGS_MODULE = "cameo_backend.settings"
-PYTHONPATH = "cameo_backend" 
+PYTHONPATH = "cameo_backend"
+DJANGO_DEBUG = "False"
+DJANGO_ALLOWED_HOSTS = "*.railway.app"
+DJANGO_SECRET_KEY = "your-secret-key-here"
+REDIS_URL = "redis://localhost:6379" 
