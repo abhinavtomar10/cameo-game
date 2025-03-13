@@ -1,0 +1,14 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cd cameo_backend && python manage.py collectstatic --noinput"
+
+[deploy]
+startCommand = "cd cameo_backend && python manage.py migrate && daphne -b 0.0.0.0 -p $PORT cameo_backend.asgi:application"
+healthcheckPath = "/"
+healthcheckTimeout = 100
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 10
+
+[deploy.env]
+DJANGO_SETTINGS_MODULE = "cameo_backend.settings"
+PYTHONPATH = "cameo_backend" 
