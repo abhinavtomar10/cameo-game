@@ -53,8 +53,6 @@ jobs:
           railway --version || echo "railway version check failed"
           
       - name: Authenticate with Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           echo "Authenticating with Railway..."
           echo "$RAILWAY_TOKEN" | railway login --browserless || {
