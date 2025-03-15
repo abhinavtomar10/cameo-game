@@ -56,42 +56,14 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Verifying Railway authentication..."
-          mkdir -p ~/.railway
-          echo "{\"token\": \"$RAILWAY_TOKEN\"}" > ~/.railway/config.json  # Ensure no extra spaces or escapes
-          chmod 600 ~/.railway/config.json
-          cat ~/.railway/config.json  # For debugging
-          railway whoami || {
-            echo "Failed to verify authentication. Token may be invalid."
+          echo "Authenticating with Railway..."
+          echo "$RAILWAY_TOKEN" | railway login --browserless || {
+            echo "Authentication failed. Check token validity."
             exit 1
           }
-          
-      - name: Link Railway Project
+          railway whoami
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-        run: |
-          cd cameo_backend
-          echo "Current directory: $(pwd)"
-          echo "Attempting to link project..."
-          
-          # Try to link with project ID if available
-          if [ -n "$RAILWAY_PROJECT_ID" ]; then
-            echo "Project ID found, attempting to link..."
-            railway link "$RAILWAY_PROJECT_ID" || {
-              echo "Failed to link with project ID. Creating new project..."
-              railway init --name "cameo-game" || {
-                echo "Failed to create new project"
-                exit 1
-              }
-            }
-          else
-            echo "No project ID found. Creating new project..."
-            railway init --name "cameo-game" || {
-              echo "Failed to create new project"
-              exit 1
-            }
-          fi
           
       - name: Deploy to Railway
         env:
