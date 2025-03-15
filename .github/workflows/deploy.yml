@@ -58,9 +58,9 @@ jobs:
         run: |
           echo "Verifying Railway authentication..."
           mkdir -p ~/.railway
-          echo "{\"token\":\"$RAILWAY_TOKEN\"}" > ~/.railway/config.json
+          echo "{\"token\": \"$RAILWAY_TOKEN\"}" > ~/.railway/config.json  # Ensure no extra spaces or escapes
           chmod 600 ~/.railway/config.json
-          cat ~/.railway/config.json
+          cat ~/.railway/config.json  # For debugging
           railway whoami || {
             echo "Failed to verify authentication. Token may be invalid."
             exit 1
