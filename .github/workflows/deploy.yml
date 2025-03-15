@@ -60,6 +60,7 @@ jobs:
           mkdir -p ~/.railway
           echo "{\"token\":\"$RAILWAY_TOKEN\"}" > ~/.railway/config.json
           chmod 600 ~/.railway/config.json
+          cat ~/.railway/config.json
           railway whoami || {
             echo "Failed to verify authentication. Token may be invalid."
             exit 1
