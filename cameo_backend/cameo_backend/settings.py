@@ -63,14 +63,23 @@ ASGI_APPLICATION = 'cameo_backend.asgi.application'
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [REDIS_URL],
-        },
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
 
-
+if REDIS_URL:
+    try:
+        CHANNEL_LAYERS = {
+            'default': {
+                'BACKEND': 'channels_redis.core.RedisChannelLayer',
+                'CONFIG': {
+                    'hosts': [REDIS_URL],
+                },
+            },
+        }
+    except:
+        # Fallback to in-memory channels if Redis isn't available
+        pass
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -89,20 +98,15 @@ ROOT_URLCONF = 'cameo_backend.urls'
 # Static files configuration
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
-    BASE_DIR / "cameo_frontend" / "build" / "static",  # React build static files
-    BASE_DIR / "cameo_frontend" / "public",  # Public directory assets
+    BASE_DIR / "static",
 ]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Ensure static files are served with correct MIME types
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-STATICFILES_FINDERS = [
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-]
+# Use simplified storage for static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
-# Add whitenoise for better static file serving
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Add whitenoise for better static file serving, but use simpler version
+WHITENOISE_USE_FINDERS = True
 
 # Add whitenoise for serving files with correct MIME types
 WHITENOISE_MIME_TYPES = {
