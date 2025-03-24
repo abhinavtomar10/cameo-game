@@ -1,18 +1,21 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd cameo_backend && pip install -r requirements.txt && cd cameo_frontend && npm install && npm run build && cd .. && python manage.py collectstatic --noinput"
+buildCommand = "pip install -r requirements.txt && python manage.py collectstatic --noinput"
 
 [deploy]
-startCommand = "cd cameo_backend && python manage.py migrate && daphne -b 0.0.0.0 -p $PORT cameo_backend.asgi:application"
-healthcheckPath = "/"
-healthcheckTimeout = 100
-restartPolicyType = "on-failure"
-restartPolicyMaxRetries = 10
+startCommand = "gunicorn cameo_backend.wsgi:application --log-file -"
+healthcheckPath = "/health/"
+healthcheckTimeout = 300
+restartPolicy = "on-failure"
+maxRetries = 10
 
-[deploy.env]
+[env]
+PYTHON_VERSION = "3.12"
 DJANGO_SETTINGS_MODULE = "cameo_backend.settings"
-PYTHONPATH = "cameo_backend"
+PYTHONPATH = "."
 DJANGO_DEBUG = "False"
-DJANGO_ALLOWED_HOSTS = "*.railway.app"
-DJANGO_SECRET_KEY = "your-secret-key-here"
-REDIS_URL = "redis://localhost:6379" 
+PORT = "8000"
+DJANGO_ALLOWED_HOSTS = ".railway.app,localhost,127.0.0.1,0.0.0.0"
+DATABASE_URL = ""
+SECRET_KEY = "django-insecure-aedqw23rwea-=0ewqaeqwd13d1312"
+WEB_CONCURRENCY = "2" 
