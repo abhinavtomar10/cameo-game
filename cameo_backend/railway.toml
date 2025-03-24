@@ -1,0 +1,14 @@
+[build]
+builder = "nixpacks"
+buildCommand = "python manage.py collectstatic --noinput"
+
+[deploy]
+startCommand = "gunicorn cameo_backend.wsgi:application --log-file -"
+healthcheckPath = "/health/"
+healthcheckTimeout = 300
+restartPolicyType = "on-failure"
+
+[env]
+PYTHON_VERSION = "3.12"
+DJANGO_SETTINGS_MODULE = "cameo_backend.settings"
+PORT = "8000" 

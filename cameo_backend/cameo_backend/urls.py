@@ -17,11 +17,16 @@ Including another URLconf
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import path, re_path
+from django.urls import path, re_path, include
 from django.views.generic import TemplateView
 from django.views.static import serve
 from game import views
 from game.views import StartGame, ConnectGame
+from django.http import HttpResponse
+
+# Define health check function
+def health_check(request):
+    return HttpResponse("OK")
 
 # Serve static files first
 urlpatterns = [
@@ -31,8 +36,8 @@ urlpatterns = [
 # Then serve API endpoints
 urlpatterns += [
     path('admin/', admin.site.urls),
-    path('api/start/', StartGame.as_view(), name='start-game'),
-    path('api/connect/', ConnectGame.as_view(), name='connect-game'),
+    path('api/', include('game.urls')),
+    path('health/', health_check, name='health_check'),
 ]
 
 # Finally, serve React frontend for all other routes
@@ -41,4 +46,5 @@ urlpatterns += [
 ]
 
 # Always serve static files in development
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
