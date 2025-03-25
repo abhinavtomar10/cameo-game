@@ -6,28 +6,84 @@
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="Cameo Card Game" />
     <title>Cameo Card Game</title>
-    <!-- Load environment config first -->
+    
+    <!-- Early axios proxy for interception -->
+    <script>
+    // Define a proxy to intercept all axios calls before axios even loads
+    window.earlyAxiosCalls = [];
+    window.axios = new Proxy({}, {
+        get: function(target, prop) {
+            return function(url, ...args) {
+                console.log("Early axios intercept:", prop, url);
+                
+                // Handle hardcoded localhost URLs
+                if (typeof url === 'string' && (url.includes('127.0.0.1:8000') || url.includes('localhost:8000'))) {
+                    const newUrl = url.replace(/https?:\/\/(?:localhost|127\.0\.0\.1):8000/g, window.location.origin);
+                    console.log("Early interceptor rewrote URL:", url, "to", newUrl);
+                    url = newUrl;
+                }
+                
+                // Store call for later replay when real axios loads
+                window.earlyAxiosCalls.push({method: prop, url: url, args: args});
+                
+                return new Promise((resolve, reject) => {
+                    console.log("Early axios call queued for replay with real axios");
+                    setTimeout(() => reject(new Error("Axios not yet loaded")), 50);
+                });
+            };
+        }
+    });
+    </script>
+    
+    <!-- Environment config and patchers -->
     <script src="/static/env-config.js"></script>
-    <!-- Add API call patching script -->
+    <script src="/static/preload-patch.js"></script>
     <script src="/static/api-patch.js"></script>
-    <!-- Add stylesheets -->
+    
+    <!-- WebSocket patcher -->
+    <script>
+    (function() {
+        // Override WebSocket constructor to fix localhost URLs
+        const OriginalWebSocket = window.WebSocket;
+        window.WebSocket = function(url, protocols) {
+            if (typeof url === 'string' && (url.includes('127.0.0.1:8000') || url.includes('localhost:8000'))) {
+                const host = window.location.host;
+                const path = url.split('ws://127.0.0.1:8000')[1] || url.split('ws://localhost:8000')[1];
+                const newUrl = 'ws://' + host + path;
+                console.log("WebSocket patch: Changed", url, "to", newUrl);
+                url = newUrl;
+            }
+            return new OriginalWebSocket(url, protocols);
+        };
+    })();
+    </script>
+    
+    <!-- Stylesheet -->
     <link rel="stylesheet" href="/static/static/css/main.css" />
 </head>
 <body>
     <div id="root"></div>
+    
+    <!-- Debug helper -->
     <script>
-    // Window-level debug helper
     window.debugApiCalls = function() {
         console.log('ENV_CONFIG:', window.ENV_CONFIG);
         console.log('Current origin:', window.location.origin);
         console.log('API URL example:', window.getApiUrl ? window.getApiUrl('start/') : 'getApiUrl not available');
     };
-    // Call debug function once page loads
+    
     window.addEventListener('load', function() {
         console.log('Page loaded, debugging API configuration...');
+        
+        // Run debug helper
         if (window.debugApiCalls) window.debugApiCalls();
+        
+        // Apply axios patches to real axios when it loads
+        if (window.patchRealAxios) window.patchRealAxios();
     });
     </script>
+    
+    <!-- Main React bundle -->
     <script src="/static/static/js/main.js"></script>
 </body>
 </html> 

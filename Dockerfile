@@ -62,12 +62,16 @@ RUN mkdir -p /app/static && \
 # Go back to the main directory
 WORKDIR /app
 
-# Create custom scripts
-RUN mkdir -p /app/static
+# Create custom scripts - ensure API_PATCH is created directly from source content for better reliability
+RUN mkdir -p /app/static 
 COPY cameo_backend/static/env-config.js /app/static/
 COPY cameo_backend/static/api-patch.js /app/static/
 
-# Add custom index.html file to ensure React build is loaded properly
+# Ensure axios patching works by adding a script to preload it before React
+RUN mkdir -p /app/static && \
+    echo 'if(!window.axiosPatcherLoaded){window.axiosPatcherLoaded=true;console.log("Preloading axios patch...")}' > /app/static/preload-patch.js
+
+# Add custom index.html file to ensure React build is loaded properly with axios patching
 RUN mkdir -p /app/templates && \
     echo '<!DOCTYPE html>\n\
 <html lang="en">\n\
@@ -77,10 +81,39 @@ RUN mkdir -p /app/templates && \
     <meta name="theme-color" content="#000000" />\n\
     <meta name="description" content="Cameo Card Game" />\n\
     <title>Cameo Card Game</title>\n\
+    <!-- Pre-declare axios override for patching -->\n\
+    <script>\n\
+        // Define a proxy for axios early to catch all method calls\n\
+        window.originalAxiosMethods = {};\n\
+        window.axios = new Proxy({}, {\n\
+            get: function(target, prop) {\n\
+                console.log("Axios proxy intercepted:", prop);\n\
+                return function(url, ...args) {\n\
+                    if (url && url.includes && (url.includes("127.0.0.1:8000") || url.includes("localhost:8000"))) {\n\
+                        console.log("CRITICAL - Intercepting early axios call to:", url);\n\
+                        // Fix the URL - replace localhost with current origin\n\
+                        const newUrl = url.replace(/https?:\\/\\/(?:localhost|127\\.0\\.0\\.1):8000/g, window.location.origin);\n\
+                        console.log("CRITICAL - Redirecting to:", newUrl);\n\
+                        url = newUrl;\n\
+                    }\n\
+                    // Store for later when real axios loads\n\
+                    if (!window.earlyAxiosCalls) window.earlyAxiosCalls = [];\n\
+                    window.earlyAxiosCalls.push({method: prop, url: url, args: args});\n\
+                    \n\
+                    // Once real axios loads, this will be replaced\n\
+                    return new Promise((resolve, reject) => {\n\
+                        reject(new Error("Axios not yet loaded, but call was intercepted and will retry"));\n\
+                    });\n\
+                };\n\
+            }\n\
+        });\n\
+    </script>\n\
     <!-- Load environment config first -->\n\
     <script src="/static/env-config.js"></script>\n\
     <!-- Add API call patching script -->\n\
     <script src="/static/api-patch.js"></script>\n\
+    <!-- Add preload patch -->\n\
+    <script src="/static/preload-patch.js"></script>\n\
     <!-- Add stylesheets -->\n\
     <link rel="stylesheet" href="/static/css/main.css" />\n\
 </head>\n\

@@ -3,9 +3,14 @@
     
     // Function to determine if a URL needs to be patched
     function shouldPatchUrl(url) {
+        if (typeof url !== 'string') return false;
         return (
-            (url.includes('127.0.0.1:8000') || url.includes('localhost:8000')) && 
-            !url.includes(window.location.host)
+            url.includes('127.0.0.1:8000') || 
+            url.includes('localhost:8000') ||
+            url.startsWith('http://127.0.0.1:8000') ||
+            url.startsWith('http://localhost:8000') ||
+            url.startsWith('ws://127.0.0.1:8000') ||
+            url.startsWith('ws://localhost:8000')
         );
     }
     
@@ -15,21 +20,32 @@
         
         console.log('API Patch: Fixing URL from', url);
         
+        // Handle WebSocket URLs
+        if (url.startsWith('ws://')) {
+            const wsUrl = 'ws://' + window.location.host + url.substring('ws://127.0.0.1:8000'.length);
+            console.log('API Patch: Fixed WebSocket URL to', wsUrl);
+            return wsUrl;
+        }
+        
+        // Handle HTTP URLs
+        let origin = window.location.origin;
+        let path = '';
+        
         // Extract the path portion after the host
-        let path = url;
         if (url.includes('//')) {
-            path = url.split('//')[1].split('/').slice(1).join('/');
+            const parts = url.split('//');
+            const hostAndPath = parts[1].split('/');
+            path = '/' + hostAndPath.slice(1).join('/');
+        } else {
+            path = url;
         }
         
-        // Make sure we don't have duplicated 'api/' in the path
-        if (path.startsWith('api/')) {
-            path = path;
-        } else if (path.includes('/api/')) {
-            path = 'api/' + path.split('/api/')[1];
+        // Make sure leading slash exists
+        if (!path.startsWith('/')) {
+            path = '/' + path;
         }
         
-        // Construct the new URL using the current origin
-        const newUrl = window.location.origin + '/' + path;
+        const newUrl = origin + path;
         console.log('API Patch: Fixed URL to', newUrl);
         return newUrl;
     }
@@ -55,15 +71,71 @@
         return originalXhrOpen.call(this, method, patchedUrl, async, user, password);
     };
     
-    // Override axios if it exists
-    if (window.axios) {
-        const originalAxiosRequest = window.axios.request;
-        window.axios.request = function(config) {
-            if (config.url) {
-                config.url = patchUrl(config.url);
+    // Override WebSocket constructor
+    const OriginalWebSocket = window.WebSocket;
+    window.WebSocket = function(url, protocols) {
+        const patchedUrl = patchUrl(url);
+        return new OriginalWebSocket(patchedUrl, protocols);
+    };
+    
+    // Add Axios specific override
+    console.log('API Patch: Looking for axios to patch');
+    
+    // Wait for axios to be available if not already
+    function patchAxios() {
+        if (window.axios) {
+            console.log('API Patch: Found axios, patching...');
+            
+            // Store the original methods
+            const originalPost = window.axios.post;
+            const originalGet = window.axios.get;
+            const originalPut = window.axios.put;
+            const originalDelete = window.axios.delete;
+            
+            // Override axios.post
+            window.axios.post = function(url, data, config) {
+                console.log('API Patch: Caught axios.post to:', url);
+                return originalPost.call(this, patchUrl(url), data, config);
+            };
+            
+            // Override axios.get
+            window.axios.get = function(url, config) {
+                console.log('API Patch: Caught axios.get to:', url);
+                return originalGet.call(this, patchUrl(url), config);
+            };
+            
+            // Override axios.put
+            window.axios.put = function(url, data, config) {
+                console.log('API Patch: Caught axios.put to:', url);
+                return originalPut.call(this, patchUrl(url), data, config);
+            };
+            
+            // Override axios.delete
+            window.axios.delete = function(url, config) {
+                console.log('API Patch: Caught axios.delete to:', url);
+                return originalDelete.call(this, patchUrl(url), config);
+            };
+            
+            console.log('API Patch: Successfully patched axios methods');
+            return true;
+        }
+        return false;
+    }
+    
+    // Try to patch immediately, and also set a retry if axios loads later
+    if (!patchAxios()) {
+        console.log('API Patch: Axios not found initially, will retry later');
+        const checkInterval = setInterval(function() {
+            if (patchAxios()) {
+                console.log('API Patch: Successfully patched axios on retry');
+                clearInterval(checkInterval);
             }
-            return originalAxiosRequest.call(this, config);
-        };
+        }, 100);
+        
+        // Stop checking after 10 seconds
+        setTimeout(function() {
+            clearInterval(checkInterval);
+        }, 10000);
     }
     
     console.log('API Patch: API call interception initialized');
