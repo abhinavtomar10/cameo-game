@@ -43,7 +43,8 @@ jobs:
           echo "Railway CLI version:"
           railway --version
           if [ -n "${{ secrets.RAILWAY_TOKEN }}" ]; then
-            echo "RAILWAY_TOKEN is set (length: ${#RAILWAY_TOKEN} chars)"
+            echo "RAILWAY_TOKEN environment variable is set (masked for security)"
+            echo "Token length: ${#RAILWAY_TOKEN} characters"
           else
             echo "RAILWAY_TOKEN is not set!"
           fi
@@ -55,8 +56,12 @@ jobs:
           cd cameo_backend
           echo "Current directory: $(pwd)"
           echo "Attempting direct deployment with Railway CLI"
-          railway login --token "$RAILWAY_TOKEN"
+          # Using environment variable for authentication
+          echo "Logging in using environment variable..."
+          railway login
+          echo "Initializing project..."
           railway init --yes --name cameo-game
+          echo "Deploying application..."
           railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
