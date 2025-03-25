@@ -16,7 +16,7 @@ jobs:
           npm install -g @railway/cli
           echo "$(npm config get prefix)/bin" >> $GITHUB_PATH
           
-      - name: Debug token and Railway CLI
+      - name: Debug Railway CLI
         run: |
           echo "Railway CLI version:"
           railway --version
@@ -28,19 +28,11 @@ jobs:
           fi
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          
-      - name: Deploy with Railway CLI
-        run: |
-          echo "Attempting direct deployment with Railway CLI"
-          
-          # Verify Railway CLI can connect to the account
-          echo "Verifying Railway connection..."
-          railway whoami
-          
-          # Deploy directly using up command
-          echo "Deploying application..."
-          cd cameo_backend
-          railway up --detach
+      
+      - name: Deploy with Railway CLI using Docker
+        uses: docker://ghcr.io/railwayapp/cli:latest
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        with:
+          args: up --detach
 
