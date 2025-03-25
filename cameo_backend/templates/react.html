@@ -7,59 +7,142 @@
     <meta name="description" content="Cameo Card Game" />
     <title>Cameo Card Game</title>
     
-    <!-- Early axios proxy for interception -->
+    <!-- === ULTRA PATCHING SYSTEM === -->
+    <!-- These scripts must load before anything else -->
     <script>
-    // Define a proxy to intercept all axios calls before axios even loads
-    window.earlyAxiosCalls = [];
-    window.axios = new Proxy({}, {
-        get: function(target, prop) {
-            return function(url, ...args) {
-                console.log("Early axios intercept:", prop, url);
+    // Immediate script to define patchers first
+    console.log("ULTRA PATCHING: Initializing emergency patching system");
+    
+    // Immediately create a global patching object available to all scripts
+    window.__PATCH_URLS = function(url) {
+        if (typeof url !== 'string') return url;
+        if (url.includes('127.0.0.1:8000') || url.includes('localhost:8000')) {
+            console.log("ULTRA PATCHING: Found localhost URL:", url);
+            
+            // HTTP/HTTPS URLs
+            if (url.startsWith('http')) {
+                const newUrl = url.replace(/https?:\/\/(localhost|127\.0\.0\.1):8000/g, window.location.origin);
+                console.log("ULTRA PATCHING: Rewriting to:", newUrl);
+                return newUrl;
+            }
+            
+            // WebSocket URLs
+            if (url.startsWith('ws')) {
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const newUrl = url.replace(/ws:\/\/(localhost|127\.0\.0\.1):8000/g, wsProtocol + '//' + window.location.host);
+                console.log("ULTRA PATCHING: Rewriting WebSocket to:", newUrl);
+                return newUrl;
+            }
+            
+            return url;
+        }
+        return url;
+    };
+    
+    // Create an extremely early interception for axios
+    var realAxios = window.axios;
+    Object.defineProperty(window, 'axios', {
+        configurable: true,
+        enumerable: true,
+        get: function() {
+            return realAxios;
+        },
+        set: function(newAxios) {
+            console.log("ULTRA PATCHING: axios object being defined");
+            
+            // Add our patching to all methods
+            if (newAxios && typeof newAxios === 'object') {
+                const methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+                methods.forEach(function(method) {
+                    if (typeof newAxios[method] === 'function') {
+                        const originalMethod = newAxios[method];
+                        newAxios[method] = function(url, ...args) {
+                            return originalMethod.call(this, window.__PATCH_URLS(url), ...args);
+                        };
+                    }
+                });
                 
-                // Handle hardcoded localhost URLs
-                if (typeof url === 'string' && (url.includes('127.0.0.1:8000') || url.includes('localhost:8000'))) {
-                    const newUrl = url.replace(/https?:\/\/(?:localhost|127\.0\.0\.1):8000/g, window.location.origin);
-                    console.log("Early interceptor rewrote URL:", url, "to", newUrl);
-                    url = newUrl;
+                if (typeof newAxios.request === 'function') {
+                    const originalRequest = newAxios.request;
+                    newAxios.request = function(config) {
+                        if (config && config.url) {
+                            config.url = window.__PATCH_URLS(config.url);
+                        }
+                        return originalRequest.call(this, config);
+                    };
                 }
                 
-                // Store call for later replay when real axios loads
-                window.earlyAxiosCalls.push({method: prop, url: url, args: args});
-                
-                return new Promise((resolve, reject) => {
-                    console.log("Early axios call queued for replay with real axios");
-                    setTimeout(() => reject(new Error("Axios not yet loaded")), 50);
-                });
-            };
+                console.log("ULTRA PATCHING: Successfully patched axios methods");
+            }
+            
+            realAxios = newAxios;
         }
     });
+    
+    // Also override WebSocket constructor immediately
+    var RealWebSocket = window.WebSocket;
+    window.WebSocket = function(url, protocols) {
+        url = window.__PATCH_URLS(url);
+        return new RealWebSocket(url, protocols);
+    };
     </script>
     
-    <!-- Environment config and patchers -->
+    <!-- Load static patchers -->
+    <script src="/static/extreme-patch.js"></script>
+    <script src="/static/direct-patch.js"></script>
     <script src="/static/env-config.js"></script>
     <script src="/static/preload-patch.js"></script>
     <script src="/static/api-patch.js"></script>
     
-    <!-- WebSocket patcher -->
-    <script>
-    (function() {
-        // Override WebSocket constructor to fix localhost URLs
-        const OriginalWebSocket = window.WebSocket;
-        window.WebSocket = function(url, protocols) {
-            if (typeof url === 'string' && (url.includes('127.0.0.1:8000') || url.includes('localhost:8000'))) {
-                const host = window.location.host;
-                const path = url.split('ws://127.0.0.1:8000')[1] || url.split('ws://localhost:8000')[1];
-                const newUrl = 'ws://' + host + path;
-                console.log("WebSocket patch: Changed", url, "to", newUrl);
-                url = newUrl;
-            }
-            return new OriginalWebSocket(url, protocols);
-        };
-    })();
-    </script>
-    
     <!-- Stylesheet -->
     <link rel="stylesheet" href="/static/static/css/main.css" />
+    
+    <!-- Direct string replacement for localhost URLs -->
+    <script>
+    // This script directly modifies the React bundle at runtime
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("ULTRA PATCHING: DOMContentLoaded - setting up final patches");
+        
+        // Find all scripts in the document
+        document.querySelectorAll('script').forEach(function(script) {
+            if (script.src) {
+                // If it's a script with a src attribute, check if it contains localhost
+                if (script.src.includes('127.0.0.1:8000') || script.src.includes('localhost:8000')) {
+                    script.src = window.__PATCH_URLS(script.src);
+                }
+            }
+        });
+        
+        // Create a special object in the window to handle axios calls
+        window.__patchedPost = function(url, data, config) {
+            console.log("ULTRA PATCHING: Intercepted POST to:", url);
+            url = window.__PATCH_URLS(url);
+            
+            // Get the real axios object
+            var axios = window.axios;
+            return axios.post(url, data, config);
+        };
+        
+        // Add hooks to handle specific components
+        try {
+            // Override startGame function
+            setTimeout(function() {
+                if (window.startGame) {
+                    console.log("ULTRA PATCHING: Found startGame function, patching it");
+                    const originalStartGame = window.startGame;
+                    window.startGame = function() {
+                        console.log("ULTRA PATCHING: Intercepted startGame call");
+                        return window.__patchedPost('/api/start/', {}, {
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    };
+                }
+            }, 1000);
+        } catch (e) {
+            console.error("ULTRA PATCHING: Error setting up component patches:", e);
+        }
+    });
+    </script>
 </head>
 <body>
     <div id="root"></div>
@@ -78,12 +161,79 @@
         // Run debug helper
         if (window.debugApiCalls) window.debugApiCalls();
         
-        // Apply axios patches to real axios when it loads
-        if (window.patchRealAxios) window.patchRealAxios();
+        // Add a special polyfill to catch App.js:41 onclick function
+        try {
+            console.log("ULTRA PATCHING: Adding click interceptor to any Start Game buttons");
+            document.querySelectorAll('button').forEach(function(button) {
+                if (button.innerText.includes('Start Game')) {
+                    console.log("ULTRA PATCHING: Found Start Game button, adding special handler");
+                    button.addEventListener('click', function(e) {
+                        console.log("ULTRA PATCHING: Start Game button clicked");
+                        
+                        // Try to intercept the original click handler
+                        if (e.stopImmediatePropagation) {
+                            e.stopImmediatePropagation();
+                        }
+                        e.preventDefault();
+                        
+                        // Call our patched version
+                        fetch('/api/start/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({})
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log("ULTRA PATCHING: Successful API response:", data);
+                            
+                            // Try to update the game state manually
+                            if (data.code && window.connectWebSocket) {
+                                console.log("ULTRA PATCHING: Attempting to connect WebSocket with code:", data.code);
+                                window.player = 1;
+                                window.connectWebSocket(data.code);
+                            }
+                        })
+                        .catch(error => {
+                            console.error("ULTRA PATCHING: Error in API call:", error);
+                        });
+                        
+                        return false;
+                    }, true);
+                }
+            });
+        } catch (e) {
+            console.error("ULTRA PATCHING: Error setting up click handlers:", e);
+        }
     });
     </script>
     
     <!-- Main React bundle -->
     <script src="/static/static/js/main.js"></script>
+    
+    <!-- Final patch to fix any remaining issues -->
+    <script>
+    // Last-ditch effort to patch any issues that might remain
+    setTimeout(function() {
+        console.log("ULTRA PATCHING: Running final patches");
+        
+        // Look for specific React components that might need patching
+        if (window.axios && window.axios.post) {
+            const originalPost = window.axios.post;
+            window.axios.post = function(url, data, config) {
+                console.log("ULTRA PATCHING: Final axios.post interceptor called with:", url);
+                
+                // Special handling for the start endpoint
+                if (url === 'http://127.0.0.1:8000/api/start/' || url === 'http://localhost:8000/api/start/') {
+                    console.log("ULTRA PATCHING: Directly changing start endpoint URL to current origin");
+                    url = window.location.origin + '/api/start/';
+                }
+                
+                return originalPost.call(this, url, data, config);
+            };
+        }
+    }, 2000);
+    </script>
 </body>
 </html> 
