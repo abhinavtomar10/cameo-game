@@ -29,11 +29,14 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       
-      - name: Deploy with Railway CLI using Docker
-        uses: docker://ghcr.io/railwayapp/cli:latest
+      - name: Deploy with Railway CLI
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          
+          echo "Deploying to Railway..."
+          railway up --service cameo-game --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        with:
-          entrypoint: railway
-          args: up --service cameo-game --detach
 
