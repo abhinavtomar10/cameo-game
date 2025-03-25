@@ -118,10 +118,10 @@ RUN echo '<!DOCTYPE html>' > templates/react.html && \
     echo '                if (url.includes("127.0.0.1:8000") || url.includes("localhost:8000")) {' >> templates/react.html && \
     echo '                    console.log("🔄 Early rewrite:", url);' >> templates/react.html && \
     echo '                    if (url.startsWith("http")) {' >> templates/react.html && \
-    echo '                        const path = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8000/, "");' >> templates/react.html && \
+    echo '                        const path = url.replace(/^http:\/\/(localhost|127\.0\.0\.1):8000/, "");' >> templates/react.html && \
     echo '                        return window.location.origin + path;' >> templates/react.html && \
     echo '                    } else if (url.startsWith("ws")) {' >> templates/react.html && \
-    echo '                        const path = url.replace(/^wss?:\/\/(localhost|127\.0\.0\.1):8000/, "");' >> templates/react.html && \
+    echo '                        const path = url.replace(/^ws:\/\/(localhost|127\.0\.0\.1):8000/, "");' >> templates/react.html && \
     echo '                        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";' >> templates/react.html && \
     echo '                        return protocol + "//" + window.location.host + path;' >> templates/react.html && \
     echo '                    }' >> templates/react.html && \

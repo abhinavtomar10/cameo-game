@@ -16,12 +16,12 @@
       console.log("🔄 Rewriting URL:", url);
       
       if (url.startsWith('http')) {
-        // For HTTP/HTTPS URLs
-        const path = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8000/, "");
+        // For HTTP/HTTPS URLs - Modified to specifically target http:// without 's'
+        const path = url.replace(/^http:\/\/(localhost|127\.0\.0\.1):8000/, "");
         return window.location.origin + path;
       } else if (url.startsWith('ws')) {
         // For WebSocket URLs
-        const path = url.replace(/^wss?:\/\/(localhost|127\.0\.0\.1):8000/, "");
+        const path = url.replace(/^ws:\/\/(localhost|127\.0\.0\.1):8000/, "");
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         return protocol + '//' + window.location.host + path;
       }
