@@ -3,17 +3,29 @@ FROM python:3.12-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PATH="/usr/local/bin:${PATH}"
+ENV PORT=8000
 
 # Set work directory
 WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    nodejs \
+    npm \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verify Python and pip installation
+RUN python --version && pip --version
 
 # Install dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
-
-# Install Node.js for frontend build
-RUN apt-get update && apt-get install -y nodejs npm
 
 # Copy project
 COPY . .
@@ -29,7 +41,7 @@ WORKDIR /app
 RUN python manage.py collectstatic --noinput
 
 # Expose port
-EXPOSE 8000
+EXPOSE ${PORT}
 
 # Command to run the application
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"] 
+CMD gunicorn cameo_backend.wsgi:application --bind 0.0.0.0:${PORT} 

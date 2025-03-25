@@ -31,17 +31,16 @@ jobs:
           
       - name: Deploy with Railway CLI
         run: |
-          cd cameo_backend
-          echo "Current directory: $(pwd)"
           echo "Attempting direct deployment with Railway CLI"
           echo "Creating new project and deploying..."
           
-          # First, check available services
-          echo "Available services:"
-          railway service list || true
+          # First list and link the project
+          echo "Available projects:"
+          railway project list
           
-          # Deploy to the specific service
-          railway up --service cameo-game --detach
+          # Deploy the application
+          echo "Deploying application..."
+          railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
