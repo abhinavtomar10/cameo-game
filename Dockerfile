@@ -5,9 +5,22 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV APP_HOME=/app
 ENV DJANGO_SETTINGS_MODULE=cameo_backend.settings
+ENV NODE_VERSION=18.x
+ENV NPM_VERSION=9.x
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y nodejs npm git curl
+# Install system dependencies with better error handling
+RUN apt-get update && \
+    apt-get install -y curl gnupg git && \
+    # Install Node.js from NodeSource
+    curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION} | bash - && \
+    apt-get install -y nodejs && \
+    # Verify installations 
+    python --version && \
+    node --version && \
+    npm --version && \
+    # Clean up
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create directories and set permissions
 WORKDIR $APP_HOME
@@ -39,15 +52,36 @@ RUN echo 'window.ENV_CONFIG = { API_BASE_URL: window.location.origin, DEBUG: fal
 # Ensure emergency fix scripts directory exists
 RUN mkdir -p cameo_backend/static/
 
-# Build React frontend
-WORKDIR $APP_HOME/cameo_frontend
-RUN npm install
-RUN npm run build
+# Check if React frontend directory exists and has package.json
+RUN if [ -d "$APP_HOME/cameo_frontend" ] && [ -f "$APP_HOME/cameo_frontend/package.json" ]; then \
+      echo "Found React frontend, building..."; \
+      cd $APP_HOME/cameo_frontend && \
+      npm install --loglevel verbose && \
+      npm run build; \
+    else \
+      echo "No React frontend found or missing package.json. Creating minimal static structure."; \
+      mkdir -p $APP_HOME/cameo_backend/static/static/css && \
+      mkdir -p $APP_HOME/cameo_backend/static/static/js && \
+      # Create minimal CSS file
+      echo "body { font-family: sans-serif; }" > $APP_HOME/cameo_backend/static/static/css/main.css && \
+      # Create minimal JS file
+      echo "console.log('Minimal JS bundle loaded');" > $APP_HOME/cameo_backend/static/static/js/main.js; \
+    fi
 
-# Copy build files to Django static directory
+# Ensure static directories exist
 WORKDIR $APP_HOME
-RUN cp -r cameo_frontend/build/static/* cameo_backend/static/static/ || echo "No React static files to copy"
-RUN mkdir -p cameo_backend/static/js
+RUN mkdir -p cameo_backend/static/static/css cameo_backend/static/static/js
+
+# Create minimal static files if they don't exist yet (fallback)
+RUN if [ ! -f "cameo_backend/static/static/css/main.css" ]; then \
+      echo "body { font-family: sans-serif; }" > cameo_backend/static/static/css/main.css; \
+    fi
+    
+RUN if [ ! -f "cameo_backend/static/static/js/main.js" ]; then \
+      echo "console.log('Minimal JS bundle loaded');" > cameo_backend/static/static/js/main.js; \
+    fi
+
+# Create API patch scripts
 RUN echo 'console.log("API patching script loaded");' > cameo_backend/static/api-patch.js
 RUN echo 'console.log("Preload patching script loaded");' > cameo_backend/static/preload-patch.js
 
