@@ -6,26 +6,26 @@ ENV PYTHONUNBUFFERED=1
 ENV PATH="/usr/local/bin:${PATH}"
 ENV PORT=8000
 
-# Set work directory
-WORKDIR /app
-
-# Install system dependencies
+# Install system dependencies and verify Python/pip
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
     curl \
+    gnupg \
     nodejs \
     npm \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip --version \
+    && python --version
 
-# Verify Python and pip installation
-RUN python --version && pip --version
+# Set work directory
+WORKDIR /app
 
-# Install dependencies
+# Install Python dependencies
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+RUN python -m pip install --no-cache-dir --upgrade pip && \
+    python -m pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .
