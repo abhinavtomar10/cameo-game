@@ -25,11 +25,54 @@ from game.views import StartGame, ConnectGame
 from django.http import HttpResponse
 import logging
 import os
+from django.shortcuts import render
+import datetime
 
 # Set up logger
 logger = logging.getLogger(__name__)
 
-# Define health check function
+# Simple debug view to verify the server is running
+def debug_view(request):
+    import sys
+    import django
+    
+    # Get safe URL patterns - handle errors gracefully
+    try:
+        from django.urls import get_resolver
+        url_patterns = [str(pattern.pattern) for pattern in get_resolver().url_patterns]
+    except Exception as e:
+        url_patterns = [f"Error getting URL patterns: {str(e)}"]
+    
+    # Get all environment variables (redacted for security)
+    env_vars = {}
+    for key, value in os.environ.items():
+        if any(secret in key.lower() for secret in ['key', 'secret', 'pass', 'token']):
+            env_vars[key] = '***REDACTED***'
+        else:
+            # Truncate long values
+            env_vars[key] = value if len(str(value)) < 100 else f"{str(value)[:100]}..."
+    
+    debug_info = {
+        'current_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'django_version': django.get_version(),
+        'python_version': sys.version,
+        'settings_module': os.environ.get('DJANGO_SETTINGS_MODULE', 'Not set'),
+        'debug_mode': getattr(settings, 'DEBUG', 'Not set'),
+        'allowed_hosts': getattr(settings, 'ALLOWED_HOSTS', 'Not set'),
+        'static_root': getattr(settings, 'STATIC_ROOT', 'Not set'),
+        'base_dir': getattr(settings, 'BASE_DIR', 'Not set'),
+        'urls': url_patterns,
+        'current_path': request.path,
+        'port': os.environ.get('PORT', 'Not set'),
+        'environment': env_vars,
+    }
+    
+    # Log some diagnostic information
+    logger.info(f"Debug view accessed from {request.META.get('REMOTE_ADDR')} at {debug_info['current_time']}")
+    
+    return render(request, 'debug.html', {'debug_info': debug_info})
+
+# Health check view
 def health_check(request):
     return HttpResponse("OK")
 
@@ -74,6 +117,7 @@ urlpatterns += [
     path('admin/', admin.site.urls),
     path('health/', health_check, name='health_check'),
     path('api/', include('game.urls')),
+    path('debug/', debug_view, name='debug_view'),
 ]
 
 # Finally, serve React frontend for all other routes
@@ -85,3 +129,9 @@ urlpatterns += [
 # Always serve static files in development
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Add debug handler if in debug mode
+if settings.DEBUG:
+    urlpatterns += [
+        path('__debug__/', debug_view),
+    ]

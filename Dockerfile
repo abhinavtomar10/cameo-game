@@ -146,13 +146,33 @@ RUN echo '</html>' >> cameo_backend/templates/react.html
 # Collect static files - use the correct path to manage.py
 RUN cd $APP_HOME/cameo_backend && python manage.py collectstatic --noinput
 
-# Create a startup script with the correct path to manage.py
+# Create a healthcheck script to verify Django setup
+RUN echo '#!/bin/bash' > healthcheck.sh
+RUN echo 'cd $APP_HOME/cameo_backend' >> healthcheck.sh
+RUN echo 'python -c "import django; django.setup(); from django.conf import settings; print(\"Django setup verified. ALLOWED_HOSTS =\", settings.ALLOWED_HOSTS); print(\"STATIC_ROOT =\", settings.STATIC_ROOT); print(\"DEBUG =\", settings.DEBUG)"' >> healthcheck.sh
+RUN chmod +x healthcheck.sh
+
+# Create a robust startup script with better error handling
 RUN echo '#!/bin/bash' > start.sh
+RUN echo 'set -e  # Exit immediately if a command exits with a non-zero status' >> start.sh
 RUN echo 'cd $APP_HOME/cameo_backend' >> start.sh
-RUN echo 'python manage.py migrate' >> start.sh
+RUN echo 'echo "Current directory: $(pwd)"' >> start.sh
+RUN echo 'echo "Listing files in current directory:"' >> start.sh
+RUN echo 'ls -la' >> start.sh
+RUN echo 'echo "Python version: $(python --version)"' >> start.sh
+RUN echo 'echo "Django version: $(python -m django --version)"' >> start.sh
+RUN echo 'echo "Verifying Django settings..."' >> start.sh
+RUN echo 'python -c "import django; django.setup(); from django.conf import settings; print(\"ALLOWED_HOSTS =\", settings.ALLOWED_HOSTS); print(\"STATIC_ROOT =\", settings.STATIC_ROOT)"' >> start.sh
+RUN echo 'echo "Running database migrations..."' >> start.sh
+RUN echo 'python manage.py migrate --noinput || { echo "Migration failed"; exit 1; }' >> start.sh
 RUN echo 'echo "Starting gunicorn with cameo_backend.wsgi:application"' >> start.sh
-RUN echo 'gunicorn cameo_backend.wsgi:application --bind 0.0.0.0:$PORT --log-file -' >> start.sh
+RUN echo 'exec gunicorn --workers=2 --threads=4 --log-level=debug --timeout=120 --access-logfile=- --error-logfile=- cameo_backend.wsgi:application --bind 0.0.0.0:$PORT' >> start.sh
 RUN chmod +x start.sh
 
-# Run the application
+# Create a simple URL check page to help with debugging
+RUN mkdir -p cameo_backend/static/debug
+RUN echo '<html><head><title>Cameo Game Debug</title></head><body><h1>Cameo Game Server is Running</h1><p>Current time: <script>document.write(new Date().toString())</script></p></body></html>' > cameo_backend/static/debug/index.html
+
+# Run the application with healthcheck
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD ./healthcheck.sh || exit 1
 CMD ["./start.sh"]

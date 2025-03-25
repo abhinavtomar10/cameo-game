@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cameo Game - Debug Information</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        pre {
+            background-color: #eee;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 7px;
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 1;
+            color: #fff;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            background-color: #777;
+            border-radius: 10px;
+        }
+        .badge-success { background-color: #5cb85c; }
+        .badge-danger { background-color: #d9534f; }
+        .badge-info { background-color: #5bc0de; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cameo Game - Server Diagnostics</h1>
+    
+    <div>
+        <h2>Server Status</h2>
+        <p>
+            Server is 
+            <span class="badge badge-success">RUNNING</span>
+            as of <strong>{{ debug_info.current_time|default:current_time }}</strong>
+        </p>
+    </div>
+
+    <div>
+        <h2>Environment Information</h2>
+        <table>
+            <tr>
+                <th>Django Version</th>
+                <td>{{ debug_info.django_version }}</td>
+            </tr>
+            <tr>
+                <th>Python Version</th>
+                <td>{{ debug_info.python_version }}</td>
+            </tr>
+            <tr>
+                <th>Settings Module</th>
+                <td>{{ debug_info.settings_module }}</td>
+            </tr>
+            <tr>
+                <th>Debug Mode</th>
+                <td>
+                    {% if debug_info.debug_mode %}
+                    <span class="badge badge-danger">ENABLED</span>
+                    {% else %}
+                    <span class="badge badge-success">DISABLED</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Base Directory</th>
+                <td>{{ debug_info.base_dir }}</td>
+            </tr>
+            <tr>
+                <th>Static Root</th>
+                <td>{{ debug_info.static_root }}</td>
+            </tr>
+            <tr>
+                <th>Current Path</th>
+                <td>{{ debug_info.current_path }}</td>
+            </tr>
+            <tr>
+                <th>PORT Environment</th>
+                <td>{{ debug_info.port }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div>
+        <h2>Allowed Hosts</h2>
+        <ul>
+            {% for host in debug_info.allowed_hosts %}
+            <li>{{ host }}</li>
+            {% empty %}
+            <li>No hosts configured</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div>
+        <h2>URL Patterns</h2>
+        <ul>
+            {% for url in debug_info.urls %}
+            <li>{{ url }}</li>
+            {% empty %}
+            <li>No URLs configured</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div>
+        <h2>Quick Links</h2>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/admin/">Admin</a></li>
+            <li><a href="/health/">Health Check</a></li>
+            <li><a href="/static/debug/index.html">Static Debug Page</a></li>
+        </ul>
+    </div>
+
+    <script>
+        // Add current time
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date();
+            const timeElements = document.querySelectorAll('.current-time');
+            timeElements.forEach(function(el) {
+                el.textContent = now.toLocaleString();
+            });
+        });
+    </script>
+</body>
+</html> 
