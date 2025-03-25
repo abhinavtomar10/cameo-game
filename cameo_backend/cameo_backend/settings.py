@@ -101,8 +101,14 @@ ROOT_URLCONF = 'cameo_backend.urls'
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / "static",
+    BASE_DIR / "cameo_frontend" / "build" / "static",  # React build static files
 ]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Template directories
+FRONTEND_DIR = BASE_DIR / "cameo_frontend" / "build"
+print(f"Frontend directory: {FRONTEND_DIR}")
+print(f"Frontend directory exists: {FRONTEND_DIR.exists()}")
 
 # Use simplified storage for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
@@ -125,7 +131,10 @@ WHITENOISE_MIME_TYPES = {
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "cameo_frontend" / "build"],  # React build directory
+        'DIRS': [
+            BASE_DIR / "cameo_frontend" / "build",  # React build directory
+            BASE_DIR / "templates",  # Global templates
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -234,6 +243,11 @@ LOGGING = {
             'propagate': False,
         },
         'django.server': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django.template': {  # Add logging for templates
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,
