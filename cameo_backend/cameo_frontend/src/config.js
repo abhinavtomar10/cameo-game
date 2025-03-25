@@ -1,25 +1,42 @@
 /**
- * Application configuration
- * 
- * This file contains all the configuration values for the application.
- * In production, the API_BASE_URL will use the current origin.
- * In development, it will use the localhost URL.
+ * Configuration file that provides API and WebSocket URLs
+ * It automatically detects whether the app is running in development or production
  */
 
-// Determine if we're in production by checking if we're being served from a domain or localhost
-const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+// Determine if we're running in production
+const isProduction = window.location.hostname !== 'localhost' && 
+                     window.location.hostname !== '127.0.0.1';
 
-// Configuration object
-const config = {
-  // API base URL - use current origin in production, localhost in development
-  API_BASE_URL: isProduction ? `${window.location.origin}` : 'http://127.0.0.1:8000',
+// Set the API base URL
+const API_BASE_URL = isProduction 
+  ? window.location.origin 
+  : 'http://127.0.0.1:8000';
+
+// WebSocket URL generator
+const getWebSocketURL = (code) => {
+  // Determine WebSocket protocol based on page protocol
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   
-  // WebSocket URL - use matching protocol (wss for https, ws for http)
-  getWebSocketURL: (code) => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = isProduction ? window.location.host : '127.0.0.1:8000';
-    return `${protocol}//${host}/ws/game/${code}/`;
+  // In production, use the same host as the page
+  if (isProduction) {
+    return `${protocol}//${window.location.host}/ws/game/${code}/`;
   }
+  
+  // In development, use localhost:8000
+  return `ws://127.0.0.1:8000/ws/game/${code}/`;
+};
+
+// Log configuration for debugging
+console.log('📝 Configuration loaded:');
+console.log('📝 isProduction:', isProduction);
+console.log('📝 API_BASE_URL:', API_BASE_URL);
+console.log('📝 WebSocket URL example:', getWebSocketURL('TEST123'));
+
+// Export the configuration
+const config = {
+  API_BASE_URL,
+  getWebSocketURL,
+  isProduction
 };
 
 export default config; 

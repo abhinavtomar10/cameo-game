@@ -190,56 +190,32 @@ function prettyFormat(obj) {
 
 // Helper to patch any URLs that might be hardcoded
 (function patchHardcodedURLs() {
-  // Function to replace hardcoded URLs in string values
-  function replaceHardcodedURLs(obj) {
-    if (!obj || typeof obj !== 'object') return obj;
-    
-    const currentOrigin = window.location.origin;
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-    const wsOrigin = currentOrigin.replace(/^https?:/, wsProtocol);
-    
-    // Patterns to look for
-    const urlPatterns = [
-      { search: /http:\/\/127\.0\.0\.1:8000/g, replace: currentOrigin },
-      { search: /http:\/\/localhost:8000/g, replace: currentOrigin },
-      { search: /ws:\/\/127\.0\.0\.1:8000/g, replace: wsOrigin },
-      { search: /ws:\/\/localhost:8000/g, replace: wsOrigin }
-    ];
-    
-    // Replace in object values
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        if (typeof obj[key] === 'string') {
-          // Replace URL in string values
-          let needsReplacement = false;
-          let newValue = obj[key];
-          
-          urlPatterns.forEach(pattern => {
-            if (pattern.search.test(newValue)) {
-              needsReplacement = true;
-              newValue = newValue.replace(pattern.search, pattern.replace);
-            }
-          });
-          
-          if (needsReplacement) {
-            console.log(`🔄 Replacing hardcoded URL in property "${key}":`, obj[key], '->', newValue);
-            obj[key] = newValue;
-          }
-        } else if (obj[key] && typeof obj[key] === 'object') {
-          // Recursively process nested objects
-          replaceHardcodedURLs(obj[key]);
-        }
+  const currentOrigin = window.location.origin;
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+  const wsOrigin = currentOrigin.replace(/^https?:/, wsProtocol);
+  
+  // Replace hardcoded URLs in axios calls
+  if (window.axios) {
+    const originalPost = window.axios.post;
+    window.axios.post = function(url, data, config) {
+      if (typeof url === 'string' && 
+          (url.includes('127.0.0.1:8000') || url.includes('localhost:8000'))) {
+        console.log('🔄 Replacing hardcoded URL in axios call:', url);
+        url = url.replace(/https?:\/\/(localhost|127\.0\.0\.1):8000/g, currentOrigin);
       }
-    }
-    
-    return obj;
+      return originalPost.call(this, url, data, config);
+    };
   }
   
-  // Patch JSON.parse to fix URLs in parsed objects
-  const originalJSONParse = JSON.parse;
-  JSON.parse = function() {
-    const result = originalJSONParse.apply(this, arguments);
-    return replaceHardcodedURLs(result);
+  // Replace hardcoded URLs in WebSocket
+  const OriginalWebSocket = window.WebSocket;
+  window.WebSocket = function(url, protocols) {
+    if (typeof url === 'string' && 
+        (url.includes('127.0.0.1:8000') || url.includes('localhost:8000'))) {
+      console.log('🔄 Replacing hardcoded URL in WebSocket:', url);
+      url = url.replace(/wss?:\/\/(localhost|127\.0\.0\.1):8000/g, wsOrigin);
+    }
+    return new OriginalWebSocket(url, protocols);
   };
   
   console.log('🔄 URL Patching System Activated');
@@ -269,24 +245,20 @@ function prettyFormat(obj) {
 
 // Check if server is reachable
 (function checkServerConnection() {
-  const endpoints = [
-    window.location.origin + '/api/health/',
-    window.location.origin + '/static/health.txt'
-  ];
-  
-  endpoints.forEach(url => {
-    fetch(url, { method: 'GET', cache: 'no-store' })
-      .then(response => {
-        console.log(`🔍 Server health check to ${url}: ${response.status} ${response.statusText}`);
-        return response.text();
-      })
-      .then(text => {
-        console.log(`🔍 Server response: ${text.substring(0, 100)}`);
-      })
-      .catch(error => {
-        console.error(`🚨 Server health check failed for ${url}:`, error);
-      });
-  });
+  fetch(window.location.origin + '/api/health/', { 
+    method: 'GET', 
+    cache: 'no-store' 
+  })
+    .then(response => {
+      console.log(`🔍 Server health check: ${response.status}`);
+      return response.text();
+    })
+    .then(text => {
+      console.log(`🔍 Server response: ${text.substring(0, 100)}`);
+    })
+    .catch(error => {
+      console.error(`🚨 Server health check failed:`, error);
+    });
 })();
 
 // Watch for DOM mutations that might be related to the game
