@@ -35,11 +35,14 @@ jobs:
           
       - name: Install Railway
         run: npm install -g @railway/cli
+          
+      - name: Go to backend directory
+        run: cd cameo_backend
         
       - name: Deploy to Railway
         uses: bervProject/railway-deploy@main
         with:
           railway_token: ${{ secrets.RAILWAY_TOKEN }}
           service: "cameo-game"
-          working_dir: "./cameo_backend"
+          detach: true
 
