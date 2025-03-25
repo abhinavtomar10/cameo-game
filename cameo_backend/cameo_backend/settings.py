@@ -101,8 +101,16 @@ ROOT_URLCONF = 'cameo_backend.urls'
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / "static",
-    BASE_DIR / "cameo_frontend" / "build" / "static",  # React build static files
 ]
+
+# Check if React static directories exist
+react_static_dir = BASE_DIR / "cameo_frontend" / "build" / "static"
+if react_static_dir.exists():
+    print(f"React static directory found at {react_static_dir}")
+    STATICFILES_DIRS.append(react_static_dir)
+else:
+    print(f"React static directory not found at {react_static_dir}")
+
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Template directories
@@ -110,10 +118,17 @@ FRONTEND_DIR = BASE_DIR / "cameo_frontend" / "build"
 print(f"Frontend directory: {FRONTEND_DIR}")
 print(f"Frontend directory exists: {FRONTEND_DIR.exists()}")
 
-# Use simplified storage for static files
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+# Debug static file paths
+for static_dir in STATICFILES_DIRS:
+    print(f"Static directory: {static_dir}")
+    print(f"Static directory exists: {static_dir.exists()}")
 
-# Add whitenoise for better static file serving, but use simpler version
+# Use simplified storage for static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# WhiteNoise configuration
+WHITENOISE_ROOT = STATIC_ROOT
+WHITENOISE_INDEX_FILE = True
 WHITENOISE_USE_FINDERS = True
 
 # Add whitenoise for serving files with correct MIME types
@@ -126,14 +141,15 @@ WHITENOISE_MIME_TYPES = {
     'image/x-icon': 'image/x-icon',
     'text/javascript': 'application/javascript',
     'application/javascript': 'application/javascript',
+    'application/json': 'application/json',
 }
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
+            BASE_DIR / "templates",  # Our templates first
             BASE_DIR / "cameo_frontend" / "build",  # React build directory
-            BASE_DIR / "templates",  # Global templates
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -248,6 +264,11 @@ LOGGING = {
             'propagate': False,
         },
         'django.template': {  # Add logging for templates
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django.staticfiles': {  # Add logging for static files
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,

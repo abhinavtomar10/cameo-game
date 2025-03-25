@@ -36,12 +36,46 @@ RUN python -m pip install --no-cache-dir --upgrade pip && \
 WORKDIR /app/cameo_frontend
 RUN echo "Building frontend with Node $(node --version) and NPM $(npm --version)" && \
     npm install && \
-    npm run build && \
+    # Fix any potential issues with the build
+    mkdir -p public && \
+    touch public/manifest.json && \
+    echo '{ "short_name": "Cameo Game", "name": "Cameo Card Game", "icons": [], "start_url": ".", "display": "standalone", "theme_color": "#000000", "background_color": "#ffffff" }' > public/manifest.json && \
+    # Build with production flag
+    NODE_ENV=production npm run build && \
     ls -la build && \
+    echo "Frontend build content:" && \
+    find build -type f | sort && \
     echo "Frontend build completed"
+
+# Check and copy static assets
+RUN mkdir -p /app/static && \
+    if [ -d /app/cameo_frontend/build/static ]; then \
+        cp -r /app/cameo_frontend/build/static/* /app/static/ && \
+        echo "Copied React static files to Django static directory"; \
+    else \
+        echo "No React static files found"; \
+    fi
 
 # Go back to the main directory
 WORKDIR /app
+
+# Add custom index.html file to ensure React build is loaded properly
+RUN mkdir -p /app/templates && \
+    echo '<!DOCTYPE html>\n\
+<html lang="en">\n\
+<head>\n\
+    <meta charset="utf-8" />\n\
+    <meta name="viewport" content="width=device-width, initial-scale=1" />\n\
+    <meta name="theme-color" content="#000000" />\n\
+    <meta name="description" content="Cameo Card Game" />\n\
+    <title>Cameo Card Game</title>\n\
+    <link rel="stylesheet" href="/static/css/main.css" />\n\
+</head>\n\
+<body>\n\
+    <div id="root"></div>\n\
+    <script src="/static/js/main.js"></script>\n\
+</body>\n\
+</html>' > /app/templates/react.html
 
 # Collect static files
 RUN python manage.py collectstatic --noinput --verbosity 2

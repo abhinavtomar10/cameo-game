@@ -24,6 +24,7 @@ from game import views
 from game.views import StartGame, ConnectGame
 from django.http import HttpResponse
 import logging
+import os
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -36,9 +37,26 @@ def health_check(request):
 def debug_index_view(request):
     logger.info(f"Serving index.html template at {request.path}")
     logger.info(f"Template dirs: {settings.TEMPLATES[0]['DIRS']}")
+    
+    # Check for React build template
+    react_template_path = os.path.join(settings.BASE_DIR, 'templates', 'react.html')
+    if os.path.exists(react_template_path):
+        logger.info(f"Found custom React template at {react_template_path}")
+        template_name = 'react.html'
+    else:
+        # Check for React build
+        react_index_path = os.path.join(settings.BASE_DIR, 'cameo_frontend', 'build', 'index.html')
+        if os.path.exists(react_index_path):
+            logger.info(f"Found React build at {react_index_path}")
+            template_name = 'index.html'
+        else:
+            # Use fallback template
+            logger.warning("React build not found, using fallback template")
+            template_name = 'index.html'  # This will use the fallback in templates/index.html
+    
     try:
         # Use TemplateView's as_view for rendering
-        view = TemplateView.as_view(template_name='index.html')
+        view = TemplateView.as_view(template_name=template_name)
         response = view(request)
         logger.info(f"Response status code: {response.status_code}")
         return response
@@ -61,7 +79,7 @@ urlpatterns += [
 # Finally, serve React frontend for all other routes
 urlpatterns += [
     re_path(r'^$', debug_index_view, name='index'),  # Use debug view for root URL
-    re_path(r'^.*', TemplateView.as_view(template_name='index.html'), name='index'),
+    re_path(r'^.*', debug_index_view, name='catch_all'),  # Use debug view for all routes
 ]
 
 # Always serve static files in development
