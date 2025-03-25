@@ -52,48 +52,24 @@ jobs:
           which railway || echo "railway not found in PATH"
           railway --version || echo "railway version check failed"
           
-      - name: Authenticate with Railway
+      - name: Create and Deploy New Project
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Setting up Railway authentication..."
-          mkdir -p ~/.railway
-          # Format the token as a JSON with proper escaping
-          echo "{\"token\":\"$RAILWAY_TOKEN\"}" > ~/.railway/config.json
-          chmod 600 ~/.railway/config.json
-          cat ~/.railway/config.json | sed 's/"/\\"/g' # Safely print the config without showing the actual token
-          
-      - name: Link Railway Project
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-        run: |
           cd cameo_backend
           echo "Current directory: $(pwd)"
-          echo "Attempting to link project..."
+          echo "Creating Railway project..."
           
-          # Try to link with project ID if available
-          if [ -n "$RAILWAY_PROJECT_ID" ]; then
-            echo "Project ID found, attempting to link..."
-            railway link "$RAILWAY_PROJECT_ID" || {
-              echo "Failed to link with project ID. Creating new project..."
-              railway init --name "cameo-game" || {
-                echo "Failed to create new project"
-                exit 1
-              }
-            }
-          else
-            echo "No project ID found. Creating new project..."
-            railway init --name "cameo-game" || {
-              echo "Failed to create new project"
-              exit 1
-            }
-          fi
+          # Direct approach without config files
+          echo "Creating new project..."
+          railway init --name cameo-game --token "$RAILWAY_TOKEN" || {
+            echo "Failed to create project"
+            exit 1
+          }
           
-      - name: Deploy to Railway
-        run: |
-          cd cameo_backend
-          echo "Current directory: $(pwd)"
-          echo "Starting deployment..."
-          railway up --detach
+          echo "Deploying to Railway..."
+          railway up --detach --token "$RAILWAY_TOKEN" || {
+            echo "Deployment failed"
+            exit 1
+          }
 
