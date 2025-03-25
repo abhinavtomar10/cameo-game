@@ -9,6 +9,21 @@
     "healthcheckPath": "/health/",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "restartPolicyMaxRetries": 10,
+    "startCommand": "bash -c 'echo \"Running on port $PORT with allowed hosts $ALLOWED_HOSTS\" && /app/start.sh'",
+    "envs": [
+      {
+        "key": "PORT",
+        "value": "${{ Service.PORT }}"
+      },
+      {
+        "key": "ALLOWED_HOSTS",
+        "value": ".up.railway.app,localhost,127.0.0.1"
+      },
+      {
+        "key": "DEBUG",
+        "value": "False"
+      }
+    ]
   }
 } 
