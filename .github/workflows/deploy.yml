@@ -35,7 +35,13 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Attempting direct deployment with Railway CLI"
           echo "Creating new project and deploying..."
-          railway up --detach
+          
+          # First, check available services
+          echo "Available services:"
+          railway service list || true
+          
+          # Deploy to the specific service
+          railway up --service cameo-game --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
