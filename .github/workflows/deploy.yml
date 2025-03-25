@@ -8,15 +8,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
       
-      - name: Debug Directory Structure
-        run: |
-          pwd
-          ls -la
-          echo "Checking cameo_backend directory:"
-          ls -la cameo_backend || echo "cameo_backend directory not found"
-          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -39,43 +33,13 @@ jobs:
           cd cameo_backend
           python manage.py collectstatic --noinput
           
-          
-      - name: Install Railway CLI
-        run: |
-          npm install -g @railway/cli
-          echo "Adding npm global bin to PATH"
-          echo "PATH=$PATH:$(npm config get prefix)/bin" >> $GITHUB_ENV
-          
-      - name: Debug Railway CLI
-        run: |
-          echo "Current PATH: $PATH"
-          which railway || echo "railway not found in PATH"
-          railway --version || echo "railway version check failed"
-          
-      - name: Create and Deploy New Project
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          cd cameo_backend
-          echo "Current directory: $(pwd)"
-          echo "Creating Railway project..."
-          
-          # Use environment variable approach
-          echo "Setting up token as environment variable"
-          export RAILWAY_TOKEN="$RAILWAY_TOKEN"
-          
-          # Verify token is set
-          echo "Token length: ${#RAILWAY_TOKEN}"
-          
-          echo "Creating new project..."
-          railway init --name cameo-game || {
-            echo "Failed to create project"
-            exit 1
-          }
-          
-          echo "Deploying to Railway..."
-          railway up --detach || {
-            echo "Deployment failed"
-            exit 1
-          }
+      - name: Install Railway
+        run: npm install -g @railway/cli
+        
+      - name: Deploy to Railway
+        uses: bervProject/railway-deploy@main
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: "cameo-game"
+          working_dir: "./cameo_backend"
 
