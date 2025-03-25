@@ -60,15 +60,21 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Creating Railway project..."
           
-          # Direct approach without config files
+          # Use environment variable approach
+          echo "Setting up token as environment variable"
+          export RAILWAY_TOKEN="$RAILWAY_TOKEN"
+          
+          # Verify token is set
+          echo "Token length: ${#RAILWAY_TOKEN}"
+          
           echo "Creating new project..."
-          railway init --name cameo-game --token "$RAILWAY_TOKEN" || {
+          railway init --name cameo-game || {
             echo "Failed to create project"
             exit 1
           }
           
           echo "Deploying to Railway..."
-          railway up --detach --token "$RAILWAY_TOKEN" || {
+          railway up --detach || {
             echo "Deployment failed"
             exit 1
           }
