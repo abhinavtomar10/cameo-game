@@ -34,15 +34,30 @@ jobs:
           python manage.py collectstatic --noinput
           
       - name: Install Railway
-        run: npm install -g @railway/cli
+        run: |
+          npm install -g @railway/cli
+          echo "$(npm config get prefix)/bin" >> $GITHUB_PATH
           
-      - name: Go to backend directory
-        run: cd cameo_backend
-        
-      - name: Deploy to Railway
-        uses: bervProject/railway-deploy@main
-        with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: "cameo-game"
-          detach: true
+      - name: Debug token and Railway CLI
+        run: |
+          echo "Railway CLI version:"
+          railway --version
+          if [ -n "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN is set (length: ${#RAILWAY_TOKEN} chars)"
+          else
+            echo "RAILWAY_TOKEN is not set!"
+          fi
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          
+      - name: Deploy with Railway CLI
+        run: |
+          cd cameo_backend
+          echo "Current directory: $(pwd)"
+          echo "Attempting direct deployment with Railway CLI"
+          railway login --token "$RAILWAY_TOKEN"
+          railway init --yes --name cameo-game
+          railway up --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
