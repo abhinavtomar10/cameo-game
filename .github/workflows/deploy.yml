@@ -34,5 +34,6 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         with:
+          entrypoint: railway
           args: up --detach
 
