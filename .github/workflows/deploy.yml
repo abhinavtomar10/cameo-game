@@ -32,14 +32,14 @@ jobs:
       - name: Deploy with Railway CLI
         run: |
           echo "Attempting direct deployment with Railway CLI"
-          echo "Creating new project and deploying..."
           
-          # First list and link the project
-          echo "Available projects:"
-          railway project list
+          # Verify Railway CLI can connect to the account
+          echo "Verifying Railway connection..."
+          railway whoami
           
-          # Deploy the application
+          # Deploy directly using up command
           echo "Deploying application..."
+          cd cameo_backend
           railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
