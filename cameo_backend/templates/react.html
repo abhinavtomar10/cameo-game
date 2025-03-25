@@ -6,11 +6,28 @@
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="Cameo Card Game" />
     <title>Cameo Card Game</title>
-    <link rel="stylesheet" href="/static/static/css/main.css" />
+    <!-- Load environment config first -->
     <script src="/static/env-config.js"></script>
+    <!-- Add API call patching script -->
+    <script src="/static/api-patch.js"></script>
+    <!-- Add stylesheets -->
+    <link rel="stylesheet" href="/static/static/css/main.css" />
 </head>
 <body>
     <div id="root"></div>
+    <script>
+    // Window-level debug helper
+    window.debugApiCalls = function() {
+        console.log('ENV_CONFIG:', window.ENV_CONFIG);
+        console.log('Current origin:', window.location.origin);
+        console.log('API URL example:', window.getApiUrl ? window.getApiUrl('start/') : 'getApiUrl not available');
+    };
+    // Call debug function once page loads
+    window.addEventListener('load', function() {
+        console.log('Page loaded, debugging API configuration...');
+        if (window.debugApiCalls) window.debugApiCalls();
+    });
+    </script>
     <script src="/static/static/js/main.js"></script>
 </body>
 </html> 
