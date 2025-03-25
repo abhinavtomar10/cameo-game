@@ -6,9 +6,8 @@ ENV PYTHONUNBUFFERED 1
 ENV APP_HOME=/app
 ENV DJANGO_SETTINGS_MODULE=cameo_backend.settings
 ENV NODE_VERSION=18.x
-ENV NPM_VERSION=9.x
 
-# Install system dependencies with better error handling
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y curl gnupg git && \
     # Install Node.js from NodeSource
@@ -35,11 +34,10 @@ RUN ls -la $APP_HOME/
 RUN ls -la $APP_HOME/cameo_backend/ || echo "No cameo_backend directory found"
 
 # Install Python dependencies
-# Use the requirements.txt in the cameo_backend directory
 RUN pip install --no-cache-dir -r $APP_HOME/cameo_backend/requirements.txt
 
-# Create public directory and manifest.json
-RUN mkdir -p public
+# Create manifest.json
+RUN mkdir -p $APP_HOME/cameo_backend/static
 RUN echo '{ \
   "short_name": "Cameo", \
   "name": "Cameo Card Game", \
@@ -48,131 +46,46 @@ RUN echo '{ \
   "display": "standalone", \
   "theme_color": "#000000", \
   "background_color": "#ffffff" \
-}' > public/manifest.json
+}' > $APP_HOME/cameo_backend/static/manifest.json
 
-# Create environment config for the frontend
-RUN echo 'window.ENV_CONFIG = { API_BASE_URL: window.location.origin, DEBUG: false };' > public/env-config.js
+# Build React frontend
+WORKDIR $APP_HOME/cameo_backend/cameo_frontend
+RUN npm install && \
+    npm run build && \
+    mkdir -p $APP_HOME/cameo_backend/static/static && \
+    cp -r build/static/* $APP_HOME/cameo_backend/static/static/ || echo "No React static files to copy"
 
-# Ensure emergency fix scripts directory exists
-RUN mkdir -p cameo_backend/static/
+# Create templates directory and go back to app root
+WORKDIR $APP_HOME/cameo_backend
+RUN mkdir -p templates
 
-# Check if React frontend directory exists and has package.json
-RUN if [ -d "$APP_HOME/cameo_frontend" ] && [ -f "$APP_HOME/cameo_frontend/package.json" ]; then \
-      echo "Found React frontend, building..."; \
-      cd $APP_HOME/cameo_frontend && \
-      npm install --loglevel verbose && \
-      npm run build; \
-    else \
-      echo "No React frontend found or missing package.json. Creating minimal static structure."; \
-      mkdir -p $APP_HOME/cameo_backend/static/static/css && \
-      mkdir -p $APP_HOME/cameo_backend/static/static/js && \
-      # Create minimal CSS file
-      echo "body { font-family: sans-serif; }" > $APP_HOME/cameo_backend/static/static/css/main.css && \
-      # Create minimal JS file
-      echo "console.log('Minimal JS bundle loaded');" > $APP_HOME/cameo_backend/static/static/js/main.js; \
-    fi
+# Create a simple react.html template
+RUN echo '<!DOCTYPE html>' > templates/react.html && \
+    echo '<html lang="en">' >> templates/react.html && \
+    echo '<head>' >> templates/react.html && \
+    echo '    <meta charset="utf-8" />' >> templates/react.html && \
+    echo '    <meta name="viewport" content="width=device-width, initial-scale=1" />' >> templates/react.html && \
+    echo '    <meta name="theme-color" content="#000000" />' >> templates/react.html && \
+    echo '    <meta name="description" content="Cameo Card Game" />' >> templates/react.html && \
+    echo '    <title>Cameo Card Game</title>' >> templates/react.html && \
+    echo '    <link rel="stylesheet" href="/static/static/css/main.css" />' >> templates/react.html && \
+    echo '</head>' >> templates/react.html && \
+    echo '<body>' >> templates/react.html && \
+    echo '    <div id="root"></div>' >> templates/react.html && \
+    echo '    <script src="/static/static/js/main.js"></script>' >> templates/react.html && \
+    echo '</body>' >> templates/react.html && \
+    echo '</html>' >> templates/react.html
 
-# Ensure static directories exist
-WORKDIR $APP_HOME
-RUN mkdir -p cameo_backend/static/static/css cameo_backend/static/static/js
+# Collect static files 
+RUN python manage.py collectstatic --noinput || echo "Collectstatic failed, but continuing..."
 
-# Create minimal static files if they don't exist yet (fallback)
-RUN if [ ! -f "cameo_backend/static/static/css/main.css" ]; then \
-      echo "body { font-family: sans-serif; }" > cameo_backend/static/static/css/main.css; \
-    fi
-    
-RUN if [ ! -f "cameo_backend/static/static/js/main.js" ]; then \
-      echo "console.log('Minimal JS bundle loaded');" > cameo_backend/static/static/js/main.js; \
-    fi
+# Create a startup script
+RUN echo '#!/bin/bash' > start.sh && \
+    echo 'cd $APP_HOME/cameo_backend' >> start.sh && \
+    echo 'echo "Starting application in $(pwd)"' >> start.sh && \
+    echo 'python manage.py migrate --noinput' >> start.sh && \
+    echo 'exec gunicorn cameo_backend.wsgi:application --bind 0.0.0.0:$PORT --workers=2 --log-level=info' >> start.sh && \
+    chmod +x start.sh
 
-# Create API patch scripts
-RUN echo 'console.log("API patching script loaded");' > cameo_backend/static/api-patch.js
-RUN echo 'console.log("Preload patching script loaded");' > cameo_backend/static/preload-patch.js
-
-# Debug - list files to ensure they exist
-RUN ls -la cameo_backend/static/
-
-# Ensure templates directory exists
-RUN mkdir -p cameo_backend/templates
-
-# Create a simplified version of react.html
-RUN echo '<!DOCTYPE html>' > cameo_backend/templates/react.html
-RUN echo '<html lang="en">' >> cameo_backend/templates/react.html
-RUN echo '<head>' >> cameo_backend/templates/react.html
-RUN echo '    <meta charset="utf-8" />' >> cameo_backend/templates/react.html
-RUN echo '    <meta name="viewport" content="width=device-width, initial-scale=1" />' >> cameo_backend/templates/react.html
-RUN echo '    <meta name="theme-color" content="#000000" />' >> cameo_backend/templates/react.html
-RUN echo '    <meta name="description" content="Cameo Card Game" />' >> cameo_backend/templates/react.html
-RUN echo '    <title>Cameo Card Game</title>' >> cameo_backend/templates/react.html
-RUN echo '    <script>' >> cameo_backend/templates/react.html
-RUN echo '    (function() {' >> cameo_backend/templates/react.html
-RUN echo '      console.log("EMERGENCY FIX: Injecting protocol fixes");' >> cameo_backend/templates/react.html
-RUN echo '      window.__fixUrl = function(url) {' >> cameo_backend/templates/react.html
-RUN echo '        if (typeof url !== "string") return url;' >> cameo_backend/templates/react.html
-RUN echo '        if (url.includes("127.0.0.1:8000") || url.includes("localhost:8000")) {' >> cameo_backend/templates/react.html
-RUN echo '          if (url.startsWith("http")) {' >> cameo_backend/templates/react.html
-RUN echo '            const path = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8000/, "");' >> cameo_backend/templates/react.html
-RUN echo '            return window.location.origin + path;' >> cameo_backend/templates/react.html
-RUN echo '          }' >> cameo_backend/templates/react.html
-RUN echo '        }' >> cameo_backend/templates/react.html
-RUN echo '        return url;' >> cameo_backend/templates/react.html
-RUN echo '      };' >> cameo_backend/templates/react.html
-RUN echo '      window.startGameDirectly = function() {' >> cameo_backend/templates/react.html
-RUN echo '        return fetch(window.location.origin + "/api/start/", {' >> cameo_backend/templates/react.html
-RUN echo '          method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"' >> cameo_backend/templates/react.html
-RUN echo '        }).then(r => r.json());' >> cameo_backend/templates/react.html
-RUN echo '      };' >> cameo_backend/templates/react.html
-RUN echo '    })();' >> cameo_backend/templates/react.html
-RUN echo '    </script>' >> cameo_backend/templates/react.html
-RUN echo '    <link rel="stylesheet" href="/static/static/css/main.css" />' >> cameo_backend/templates/react.html
-RUN echo '</head>' >> cameo_backend/templates/react.html
-RUN echo '<body>' >> cameo_backend/templates/react.html
-RUN echo '    <div id="root"></div>' >> cameo_backend/templates/react.html
-RUN echo '    <script src="/static/static/js/main.js"></script>' >> cameo_backend/templates/react.html
-RUN echo '    <script>' >> cameo_backend/templates/react.html
-RUN echo '    setTimeout(function() {' >> cameo_backend/templates/react.html
-RUN echo '        document.addEventListener("click", function(e) {' >> cameo_backend/templates/react.html
-RUN echo '            if (e.target && e.target.tagName === "BUTTON" && e.target.innerText && e.target.innerText.includes("Start Game")) {' >> cameo_backend/templates/react.html
-RUN echo '                e.preventDefault(); e.stopPropagation();' >> cameo_backend/templates/react.html
-RUN echo '                window.startGameDirectly();' >> cameo_backend/templates/react.html
-RUN echo '                return false;' >> cameo_backend/templates/react.html
-RUN echo '            }' >> cameo_backend/templates/react.html
-RUN echo '        }, true);' >> cameo_backend/templates/react.html
-RUN echo '    }, 2000);' >> cameo_backend/templates/react.html
-RUN echo '    </script>' >> cameo_backend/templates/react.html
-RUN echo '</body>' >> cameo_backend/templates/react.html
-RUN echo '</html>' >> cameo_backend/templates/react.html
-
-# Collect static files - use the correct path to manage.py
-RUN cd $APP_HOME/cameo_backend && python manage.py collectstatic --noinput
-
-# Create a healthcheck script to verify Django setup
-RUN echo '#!/bin/bash' > healthcheck.sh
-RUN echo 'cd $APP_HOME/cameo_backend' >> healthcheck.sh
-RUN echo 'python -c "import django; django.setup(); from django.conf import settings; print(\"Django setup verified. ALLOWED_HOSTS =\", settings.ALLOWED_HOSTS); print(\"STATIC_ROOT =\", settings.STATIC_ROOT); print(\"DEBUG =\", settings.DEBUG)"' >> healthcheck.sh
-RUN chmod +x healthcheck.sh
-
-# Create a robust startup script with better error handling
-RUN echo '#!/bin/bash' > start.sh
-RUN echo 'set -e  # Exit immediately if a command exits with a non-zero status' >> start.sh
-RUN echo 'cd $APP_HOME/cameo_backend' >> start.sh
-RUN echo 'echo "Current directory: $(pwd)"' >> start.sh
-RUN echo 'echo "Listing files in current directory:"' >> start.sh
-RUN echo 'ls -la' >> start.sh
-RUN echo 'echo "Python version: $(python --version)"' >> start.sh
-RUN echo 'echo "Django version: $(python -m django --version)"' >> start.sh
-RUN echo 'echo "Verifying Django settings..."' >> start.sh
-RUN echo 'python -c "import django; django.setup(); from django.conf import settings; print(\"ALLOWED_HOSTS =\", settings.ALLOWED_HOSTS); print(\"STATIC_ROOT =\", settings.STATIC_ROOT)"' >> start.sh
-RUN echo 'echo "Running database migrations..."' >> start.sh
-RUN echo 'python manage.py migrate --noinput || { echo "Migration failed"; exit 1; }' >> start.sh
-RUN echo 'echo "Starting gunicorn with cameo_backend.wsgi:application"' >> start.sh
-RUN echo 'exec gunicorn --workers=2 --threads=4 --log-level=debug --timeout=120 --access-logfile=- --error-logfile=- cameo_backend.wsgi:application --bind 0.0.0.0:$PORT' >> start.sh
-RUN chmod +x start.sh
-
-# Create a simple URL check page to help with debugging
-RUN mkdir -p cameo_backend/static/debug
-RUN echo '<html><head><title>Cameo Game Debug</title></head><body><h1>Cameo Game Server is Running</h1><p>Current time: <script>document.write(new Date().toString())</script></p></body></html>' > cameo_backend/static/debug/index.html
-
-# Run the application with healthcheck
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD ./healthcheck.sh || exit 1
+# Run the application
 CMD ["./start.sh"]
