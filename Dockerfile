@@ -30,6 +30,10 @@ RUN mkdir -p $APP_HOME/cameo_backend/static
 # Copy project files
 COPY . $APP_HOME/
 
+# Debug - List directory contents to verify file structure
+RUN ls -la $APP_HOME/
+RUN ls -la $APP_HOME/cameo_backend/ || echo "No cameo_backend directory found"
+
 # Install Python dependencies
 # Use the requirements.txt in the cameo_backend directory
 RUN pip install --no-cache-dir -r $APP_HOME/cameo_backend/requirements.txt
@@ -139,12 +143,12 @@ RUN echo '    </script>' >> cameo_backend/templates/react.html
 RUN echo '</body>' >> cameo_backend/templates/react.html
 RUN echo '</html>' >> cameo_backend/templates/react.html
 
-# Collect static files
-RUN cd $APP_HOME && python manage.py collectstatic --noinput
+# Collect static files - use the correct path to manage.py
+RUN cd $APP_HOME/cameo_backend && python manage.py collectstatic --noinput
 
-# Create a startup script
+# Create a startup script with the correct path to manage.py
 RUN echo '#!/bin/bash' > start.sh
-RUN echo 'cd $APP_HOME' >> start.sh
+RUN echo 'cd $APP_HOME/cameo_backend' >> start.sh
 RUN echo 'python manage.py migrate' >> start.sh
 RUN echo 'echo "Starting gunicorn with cameo_backend.wsgi:application"' >> start.sh
 RUN echo 'gunicorn cameo_backend.wsgi:application --bind 0.0.0.0:$PORT --log-file -' >> start.sh
