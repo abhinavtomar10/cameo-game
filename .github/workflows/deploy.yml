@@ -11,28 +11,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          
-      - name: Install dependencies
-        run: |
-          cd cameo_backend
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          
-      - name: Build React frontend
-        run: |
-          cd cameo_backend/cameo_frontend
-          npm install
-          npm run build
-          
-      - name: Collect static files
-        run: |
-          cd cameo_backend
-          python manage.py collectstatic --noinput
-          
       - name: Install Railway
         run: |
           npm install -g @railway/cli
@@ -56,11 +34,8 @@ jobs:
           cd cameo_backend
           echo "Current directory: $(pwd)"
           echo "Attempting direct deployment with Railway CLI"
-          # Directly upload the current directory as a new deployment
-          # Skip the login step altogether since we have the RAILWAY_TOKEN
           echo "Creating new project and deploying..."
-          # Using up command directly with the --service flag
-          railway up --service cameo-game --detach
+          railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
