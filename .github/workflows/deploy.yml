@@ -56,13 +56,11 @@ jobs:
           cd cameo_backend
           echo "Current directory: $(pwd)"
           echo "Attempting direct deployment with Railway CLI"
-          # Using environment variable for authentication
-          echo "Logging in using environment variable..."
-          railway login
-          echo "Initializing project..."
-          railway init --yes --name cameo-game
-          echo "Deploying application..."
-          railway up --detach
+          # Directly upload the current directory as a new deployment
+          # Skip the login step altogether since we have the RAILWAY_TOKEN
+          echo "Creating new project and deploying..."
+          # Using up command directly with the --service flag
+          railway up --service cameo-game --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
