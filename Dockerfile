@@ -48,6 +48,54 @@ RUN echo '{ \
   "background_color": "#ffffff" \
 }' > $APP_HOME/cameo_backend/static/manifest.json
 
+# Create simple debug script for console logging
+RUN echo 'console.log("🔍 DEBUG: Page is loading on " + window.location.origin);' > $APP_HOME/cameo_backend/static/debug.js
+
+# Create emergency-fix.js for direct redirection
+RUN echo '// Emergency URL redirector\n\
+(function() {\n\
+  console.log("🚨 EMERGENCY URL REDIRECTOR ACTIVATED");\n\
+  \n\
+  // Direct exact replacements of problematic URLs\n\
+  if (window.axios) {\n\
+    const originalAxiosPost = window.axios.post;\n\
+    window.axios.post = function(url, data, config) {\n\
+      console.log("🔍 Axios call:", url);\n\
+      \n\
+      // Check for exact URLs and replace them\n\
+      if (url === "http://127.0.0.1:8000/api/start/") {\n\
+        console.log("✅ Replacing start game URL with:", window.location.origin + "/api/start/");\n\
+        return originalAxiosPost.call(this, window.location.origin + "/api/start/", data, config);\n\
+      }\n\
+      \n\
+      if (url === "http://127.0.0.1:8000/api/connect/") {\n\
+        console.log("✅ Replacing connect game URL with:", window.location.origin + "/api/connect/");\n\
+        return originalAxiosPost.call(this, window.location.origin + "/api/connect/", data, config);\n\
+      }\n\
+      \n\
+      return originalAxiosPost.call(this, url, data, config);\n\
+    };\n\
+  }\n\
+  \n\
+  // Override WebSocket constructor\n\
+  const originalWebSocket = window.WebSocket;\n\
+  window.WebSocket = function(url, protocols) {\n\
+    console.log("🔍 WebSocket connection:", url);\n\
+    \n\
+    if (url.startsWith("ws://127.0.0.1:8000/")) {\n\
+      const path = url.replace("ws://127.0.0.1:8000", "");\n\
+      const newUrl = (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host + path;\n\
+      console.log("✅ Replacing WebSocket URL with:", newUrl);\n\
+      return new originalWebSocket(newUrl, protocols);\n\
+    }\n\
+    \n\
+    return new originalWebSocket(url, protocols);\n\
+  };\n\
+  window.WebSocket.prototype = originalWebSocket.prototype;\n\
+  \n\
+  console.log("✅ Emergency URL redirector ready");\n\
+})();' > $APP_HOME/cameo_backend/static/emergency-fix.js
+
 # Create runtime configuration script
 RUN mkdir -p $APP_HOME/cameo_backend/cameo_frontend/public
 RUN echo 'window.RUNTIME_CONFIG = { \
@@ -105,6 +153,19 @@ RUN echo '<!DOCTYPE html>' > templates/react.html && \
     echo '    <meta name="theme-color" content="#000000" />' >> templates/react.html && \
     echo '    <meta name="description" content="Cameo Card Game" />' >> templates/react.html && \
     echo '    <title>Cameo Card Game</title>' >> templates/react.html && \
+    echo '    <script src="/static/debug.js"></script>' >> templates/react.html && \
+    echo '    <script>' >> templates/react.html && \
+    echo '        // Debug axios location' >> templates/react.html && \
+    echo '        window.__axiosDebug = function() {' >> templates/react.html && \
+    echo '            console.log("🔍 Checking if axios exists:", !!window.axios);' >> templates/react.html && \
+    echo '            if (window.axios) {' >> templates/react.html && \
+    echo '                console.log("🔍 Axios post method:", !!window.axios.post);' >> templates/react.html && \
+    echo '            }' >> templates/react.html && \
+    echo '        };' >> templates/react.html && \
+    echo '        setInterval(window.__axiosDebug, 1000);' >> templates/react.html && \
+    echo '    </script>' >> templates/react.html && \
+    echo '    <script src="/static/emergency-fix.js"></script>' >> templates/react.html && \
+    echo '    <script src="/static/direct-override.js"></script>' >> templates/react.html && \
     echo '    <script>' >> templates/react.html && \
     echo '        // URL Fixer for hardcoded localhost URLs' >> templates/react.html && \
     echo '        (function() {' >> templates/react.html && \
@@ -117,11 +178,13 @@ RUN echo '<!DOCTYPE html>' > templates/react.html && \
     echo '                if (typeof url !== "string") return url;' >> templates/react.html && \
     echo '                if (url.includes("127.0.0.1:8000") || url.includes("localhost:8000")) {' >> templates/react.html && \
     echo '                    console.log("🔄 Early rewrite:", url);' >> templates/react.html && \
-    echo '                    if (url.startsWith("http")) {' >> templates/react.html && \
-    echo '                        const path = url.replace(/^http:\/\/(localhost|127\.0\.0\.1):8000/, "");' >> templates/react.html && \
+    echo '                    if (url.includes("http://127.0.0.1:8000")) {' >> templates/react.html && \
+    echo '                        console.log("🎯 Exact match for http://127.0.0.1:8000");' >> templates/react.html && \
+    echo '                        const path = url.replace("http://127.0.0.1:8000", "");' >> templates/react.html && \
     echo '                        return window.location.origin + path;' >> templates/react.html && \
-    echo '                    } else if (url.startsWith("ws")) {' >> templates/react.html && \
-    echo '                        const path = url.replace(/^ws:\/\/(localhost|127\.0\.0\.1):8000/, "");' >> templates/react.html && \
+    echo '                    } else if (url.includes("ws://127.0.0.1:8000")) {' >> templates/react.html && \
+    echo '                        console.log("🎯 Exact match for ws://127.0.0.1:8000");' >> templates/react.html && \
+    echo '                        const path = url.replace("ws://127.0.0.1:8000", "");' >> templates/react.html && \
     echo '                        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";' >> templates/react.html && \
     echo '                        return protocol + "//" + window.location.host + path;' >> templates/react.html && \
     echo '                    }' >> templates/react.html && \
@@ -156,6 +219,36 @@ RUN echo '<!DOCTYPE html>' > templates/react.html && \
     echo '</head>' >> templates/react.html && \
     echo '<body>' >> templates/react.html && \
     echo '    <div id="root"></div>' >> templates/react.html && \
+    echo '    <script>' >> templates/react.html && \
+    echo '        // Override any properties in window before React loads' >> templates/react.html && \
+    echo '        Object.defineProperty(window, "axios", {' >> templates/react.html && \
+    echo '            configurable: true,' >> templates/react.html && \
+    echo '            set: function(value) {' >> templates/react.html && \
+    echo '                // When axios is set, immediately patch it' >> templates/react.html && \
+    echo '                console.log("🔄 axios being set, patching immediately");' >> templates/react.html && \
+    echo '                const originalPost = value.post;' >> templates/react.html && \
+    echo '                value.post = function(url, data, config) {' >> templates/react.html && \
+    echo '                    console.log("🔄 Intercepted axios.post:", url);' >> templates/react.html && \
+    echo '                    if (url === "http://127.0.0.1:8000/api/start/") {' >> templates/react.html && \
+    echo '                        console.log("⚠️ Redirecting to:", window.location.origin + "/api/start/");' >> templates/react.html && \
+    echo '                        url = window.location.origin + "/api/start/";' >> templates/react.html && \
+    echo '                    } else if (url === "http://127.0.0.1:8000/api/connect/") {' >> templates/react.html && \
+    echo '                        console.log("⚠️ Redirecting to:", window.location.origin + "/api/connect/");' >> templates/react.html && \
+    echo '                        url = window.location.origin + "/api/connect/";' >> templates/react.html && \
+    echo '                    }' >> templates/react.html && \
+    echo '                    return originalPost.call(this, url, data, config);' >> templates/react.html && \
+    echo '                };' >> templates/react.html && \
+    echo '                Object.defineProperty(this, "axios", {' >> templates/react.html && \
+    echo '                    configurable: true,' >> templates/react.html && \
+    echo '                    writable: true,' >> templates/react.html && \
+    echo '                    value: value' >> templates/react.html && \
+    echo '                });' >> templates/react.html && \
+    echo '            },' >> templates/react.html && \
+    echo '            get: function() {' >> templates/react.html && \
+    echo '                return this._axios;' >> templates/react.html && \
+    echo '            }' >> templates/react.html && \
+    echo '        });' >> templates/react.html && \
+    echo '    </script>' >> templates/react.html && \
     echo '    <script src="/static/static/js/main.js"></script>' >> templates/react.html && \
     echo '    <script src="/static/final-fix.js"></script>' >> templates/react.html && \
     echo '    <script>' >> templates/react.html && \
