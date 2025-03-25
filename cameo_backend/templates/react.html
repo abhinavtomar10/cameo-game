@@ -7,87 +7,101 @@
     <meta name="description" content="Cameo Card Game" />
     <title>Cameo Card Game</title>
     
-    <!-- === ULTRA PATCHING SYSTEM === -->
-    <!-- These scripts must load before anything else -->
+    <!-- EMERGENCY PROTOCOL FIX - This must be first -->
     <script>
-    // Immediate script to define patchers first
-    console.log("ULTRA PATCHING: Initializing emergency patching system");
-    
-    // Immediately create a global patching object available to all scripts
-    window.__PATCH_URLS = function(url) {
+    /**
+     * INLINE EMERGENCY FIX - This is the first line of defense
+     * We handle the protocol issue and hardcoded URLs immediately
+     */
+    (function() {
+      // Direct patches to handle hardcoded http://127.0.0.1:8000 URLs
+      console.log("🚨 INLINE EMERGENCY FIX: Injecting direct protocol fixes");
+      
+      // Global URL fixer
+      window.__fixUrl = function(url) {
         if (typeof url !== 'string') return url;
+        
         if (url.includes('127.0.0.1:8000') || url.includes('localhost:8000')) {
-            console.log("ULTRA PATCHING: Found localhost URL:", url);
-            
-            // HTTP/HTTPS URLs
-            if (url.startsWith('http')) {
-                const newUrl = url.replace(/https?:\/\/(localhost|127\.0\.0\.1):8000/g, window.location.origin);
-                console.log("ULTRA PATCHING: Rewriting to:", newUrl);
-                return newUrl;
-            }
-            
-            // WebSocket URLs
-            if (url.startsWith('ws')) {
-                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const newUrl = url.replace(/ws:\/\/(localhost|127\.0\.0\.1):8000/g, wsProtocol + '//' + window.location.host);
-                console.log("ULTRA PATCHING: Rewriting WebSocket to:", newUrl);
-                return newUrl;
-            }
-            
-            return url;
+          console.log("🚨 INLINE EMERGENCY FIX: Fixing URL " + url);
+          
+          // Fix HTTP/HTTPS URLs
+          if (url.startsWith('http')) {
+            const path = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8000/, '');
+            return window.location.origin + path;
+          }
+          
+          // Fix WebSocket URLs
+          if (url.startsWith('ws')) {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const path = url.replace(/^ws:\/\/(localhost|127\.0\.0\.1):8000/, '');
+            return wsProtocol + '//' + window.location.host + path;
+          }
         }
         return url;
-    };
-    
-    // Create an extremely early interception for axios
-    var realAxios = window.axios;
-    Object.defineProperty(window, 'axios', {
+      };
+      
+      // Override axios post immediately  
+      let realAxios = window.axios;
+      Object.defineProperty(window, 'axios', {
         configurable: true,
         enumerable: true,
         get: function() {
-            return realAxios;
+          return realAxios;
         },
         set: function(newAxios) {
-            console.log("ULTRA PATCHING: axios object being defined");
-            
-            // Add our patching to all methods
-            if (newAxios && typeof newAxios === 'object') {
-                const methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
-                methods.forEach(function(method) {
-                    if (typeof newAxios[method] === 'function') {
-                        const originalMethod = newAxios[method];
-                        newAxios[method] = function(url, ...args) {
-                            return originalMethod.call(this, window.__PATCH_URLS(url), ...args);
-                        };
-                    }
-                });
-                
-                if (typeof newAxios.request === 'function') {
-                    const originalRequest = newAxios.request;
-                    newAxios.request = function(config) {
-                        if (config && config.url) {
-                            config.url = window.__PATCH_URLS(config.url);
-                        }
-                        return originalRequest.call(this, config);
-                    };
-                }
-                
-                console.log("ULTRA PATCHING: Successfully patched axios methods");
-            }
-            
-            realAxios = newAxios;
+          console.log("🚨 INLINE EMERGENCY FIX: Intercepting axios definition");
+          
+          // Patch post method specifically
+          if (newAxios && typeof newAxios === 'object' && typeof newAxios.post === 'function') {
+            const originalPost = newAxios.post;
+            newAxios.post = function(url, data, config) {
+              if (url === 'http://127.0.0.1:8000/api/start/') {
+                console.log("🚨 INLINE EMERGENCY FIX: Directly intercepted start API call");
+                url = window.location.origin + '/api/start/';
+              }
+              return originalPost.call(this, url, data, config);
+            };
+          }
+          
+          realAxios = newAxios;
         }
-    });
-    
-    // Also override WebSocket constructor immediately
-    var RealWebSocket = window.WebSocket;
-    window.WebSocket = function(url, protocols) {
-        url = window.__PATCH_URLS(url);
-        return new RealWebSocket(url, protocols);
-    };
+      });
+      
+      // Prepare to patch the startGame function
+      window.__originalStartGame = null;
+      
+      // Create our own startGame that uses the correct URL
+      window.__emergencyStartGame = function() {
+        console.log("🚨 INLINE EMERGENCY FIX: Using emergency startGame implementation");
+        return fetch(window.location.origin + '/api/start/', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({})
+        })
+        .then(r => r.json())
+        .then(data => {
+          console.log("🚨 Game created with code:", data.code);
+          // Try to update React state
+          if (window.setGameCode) window.setGameCode(data.code);
+          if (window.setPlayer) window.setPlayer(1);
+          if (window.connectWebSocket) window.connectWebSocket(data.code);
+          return data;
+        });
+      };
+      
+      // Override WebSocket constructor
+      const OriginalWebSocket = window.WebSocket;
+      window.WebSocket = function(url, protocols) {
+        url = window.__fixUrl(url);
+        return new OriginalWebSocket(url, protocols);
+      };
+      
+      console.log("🚨 INLINE EMERGENCY FIX: Direct protocol fixes applied");
+    })();
     </script>
     
-    <!-- Load static patchers -->
+    <!-- Load emergency fix and other patchers -->
+    <script src="/static/emergency-fix.js"></script>
     <script src="/static/extreme-patch.js"></script>
     <script src="/static/direct-patch.js"></script>
     <script src="/static/env-config.js"></script>
@@ -97,51 +111,45 @@
     <!-- Stylesheet -->
     <link rel="stylesheet" href="/static/static/css/main.css" />
     
-    <!-- Direct string replacement for localhost URLs -->
+    <!-- Direct prototypal override for axios -->
     <script>
-    // This script directly modifies the React bundle at runtime
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log("ULTRA PATCHING: DOMContentLoaded - setting up final patches");
-        
-        // Find all scripts in the document
-        document.querySelectorAll('script').forEach(function(script) {
-            if (script.src) {
-                // If it's a script with a src attribute, check if it contains localhost
-                if (script.src.includes('127.0.0.1:8000') || script.src.includes('localhost:8000')) {
-                    script.src = window.__PATCH_URLS(script.src);
-                }
+    // Prototype-level patching for axios - this is a more aggressive approach
+    // to ensure startGame works correctly with the current domain
+    (function() {
+      var patchProto = function() {
+        if (window.axios && window.axios.prototype) {
+          console.log("🔧 PROTO-PATCH: Found axios prototype, patching at the prototype level");
+          
+          // Store a reference to the original axios methods
+          var originalProtoPost = window.axios.prototype.post;
+          
+          // Replace the prototype method
+          window.axios.prototype.post = function(url, data, config) {
+            if (url === 'http://127.0.0.1:8000/api/start/') {
+              console.log("🔧 PROTO-PATCH: Intercepting API call at prototype level");
+              url = window.location.origin + '/api/start/';
             }
-        });
-        
-        // Create a special object in the window to handle axios calls
-        window.__patchedPost = function(url, data, config) {
-            console.log("ULTRA PATCHING: Intercepted POST to:", url);
-            url = window.__PATCH_URLS(url);
-            
-            // Get the real axios object
-            var axios = window.axios;
-            return axios.post(url, data, config);
-        };
-        
-        // Add hooks to handle specific components
-        try {
-            // Override startGame function
-            setTimeout(function() {
-                if (window.startGame) {
-                    console.log("ULTRA PATCHING: Found startGame function, patching it");
-                    const originalStartGame = window.startGame;
-                    window.startGame = function() {
-                        console.log("ULTRA PATCHING: Intercepted startGame call");
-                        return window.__patchedPost('/api/start/', {}, {
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    };
-                }
-            }, 1000);
-        } catch (e) {
-            console.error("ULTRA PATCHING: Error setting up component patches:", e);
+            return originalProtoPost.call(this, url, data, config);
+          };
         }
-    });
+      };
+      
+      // Try to patch immediately
+      patchProto();
+      
+      // Also set up a check interval
+      var checkInterval = setInterval(function() {
+        if (window.axios && window.axios.prototype) {
+          patchProto();
+          clearInterval(checkInterval);
+        }
+      }, 100);
+      
+      // Clear interval after 10 seconds
+      setTimeout(function() {
+        clearInterval(checkInterval);
+      }, 10000);
+    })();
     </script>
 </head>
 <body>
@@ -161,50 +169,65 @@
         // Run debug helper
         if (window.debugApiCalls) window.debugApiCalls();
         
-        // Add a special polyfill to catch App.js:41 onclick function
+        // DIRECT BUTTON INTERCEPTOR
+        // This will bypass React's event system entirely and use our own direct implementation
         try {
-            console.log("ULTRA PATCHING: Adding click interceptor to any Start Game buttons");
-            document.querySelectorAll('button').forEach(function(button) {
-                if (button.innerText.includes('Start Game')) {
-                    console.log("ULTRA PATCHING: Found Start Game button, adding special handler");
-                    button.addEventListener('click', function(e) {
-                        console.log("ULTRA PATCHING: Start Game button clicked");
+            // Wait a moment for the React app to render the button
+            setTimeout(function() {
+                console.log("🔧 Finding Start Game button...");
+                document.querySelectorAll('button').forEach(function(button) {
+                    if (button.innerText && button.innerText.trim() === 'Start Game') {
+                        console.log("🔧 Found Start Game button, adding direct click handler");
                         
-                        // Try to intercept the original click handler
-                        if (e.stopImmediatePropagation) {
-                            e.stopImmediatePropagation();
-                        }
-                        e.preventDefault();
+                        // Remove any existing click handlers and add our own
+                        button.outerHTML = button.outerHTML; // This removes all event listeners
                         
-                        // Call our patched version
-                        fetch('/api/start/', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({})
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log("ULTRA PATCHING: Successful API response:", data);
+                        // Get the button again after replacing it
+                        const newButton = document.querySelector('button:contains("Start Game")') || 
+                                          document.querySelector('button');
+                        
+                        if (newButton) {
+                            newButton.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                console.log("🔧 Direct button click handler activated");
+                                
+                                // Use simple fetch for the API call
+                                fetch(window.location.origin + '/api/start/', {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: '{}'
+                                })
+                                .then(function(response) { 
+                                    return response.json(); 
+                                })
+                                .then(function(data) {
+                                    console.log("🔧 Game created with code:", data.code);
+                                    
+                                    // Try updating the React state directly
+                                    if (window.setGameCode) window.setGameCode(data.code);
+                                    if (window.setPlayer) window.setPlayer(1);
+                                    if (window.connectWebSocket) window.connectWebSocket(data.code);
+                                    
+                                    // Display helpful message in case React state updates don't work
+                                    alert("Game created! Your code is: " + data.code);
+                                })
+                                .catch(function(err) {
+                                    console.error("🔧 Error starting game:", err);
+                                    alert("Error starting game: " + err.message);
+                                });
+                                
+                                return false;
+                            });
                             
-                            // Try to update the game state manually
-                            if (data.code && window.connectWebSocket) {
-                                console.log("ULTRA PATCHING: Attempting to connect WebSocket with code:", data.code);
-                                window.player = 1;
-                                window.connectWebSocket(data.code);
-                            }
-                        })
-                        .catch(error => {
-                            console.error("ULTRA PATCHING: Error in API call:", error);
-                        });
-                        
-                        return false;
-                    }, true);
-                }
-            });
+                            console.log("🔧 Direct click handler successfully attached");
+                        }
+                    }
+                });
+            }, 2000);
         } catch (e) {
-            console.error("ULTRA PATCHING: Error setting up click handlers:", e);
+            console.error("🔧 Error setting up direct button handler:", e);
         }
     });
     </script>
@@ -212,28 +235,80 @@
     <!-- Main React bundle -->
     <script src="/static/static/js/main.js"></script>
     
-    <!-- Final patch to fix any remaining issues -->
+    <!-- Final emergency fix -->
     <script>
-    // Last-ditch effort to patch any issues that might remain
+    // Add a direct click handler to the Start Game button once React has loaded
     setTimeout(function() {
-        console.log("ULTRA PATCHING: Running final patches");
-        
-        // Look for specific React components that might need patching
-        if (window.axios && window.axios.post) {
-            const originalPost = window.axios.post;
-            window.axios.post = function(url, data, config) {
-                console.log("ULTRA PATCHING: Final axios.post interceptor called with:", url);
+        try {
+            console.log("🔧 FINAL FIX: Implementing direct API call workaround");
+            
+            // Create a global function for starting a game correctly
+            window.startGameDirectly = function() {
+                console.log("🔧 FINAL FIX: Using direct API call implementation");
                 
-                // Special handling for the start endpoint
-                if (url === 'http://127.0.0.1:8000/api/start/' || url === 'http://localhost:8000/api/start/') {
-                    console.log("ULTRA PATCHING: Directly changing start endpoint URL to current origin");
-                    url = window.location.origin + '/api/start/';
-                }
-                
-                return originalPost.call(this, url, data, config);
+                return fetch(window.location.origin + '/api/start/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: '{}'
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    console.log("🔧 FINAL FIX: Game created with code:", data.code);
+                    
+                    // Try updating React state
+                    if (window.setGameCode) window.setGameCode(data.code);
+                    if (window.setPlayer) window.setPlayer(1);
+                    if (window.connectWebSocket) window.connectWebSocket(data.code);
+                    
+                    return data;
+                });
             };
+            
+            // Final axios patch
+            if (window.axios && window.axios.post) {
+                const finalOriginalPost = window.axios.post;
+                window.axios.post = function(url, data, config) {
+                    if (url === 'http://127.0.0.1:8000/api/start/') {
+                        console.log("🔧 FINAL FIX: Intercepted final axios.post");
+                        return window.startGameDirectly();
+                    }
+                    return finalOriginalPost.apply(this, arguments);
+                };
+            }
+            
+            // Create a hidden proxy start button
+            const hiddenButton = document.createElement('button');
+            hiddenButton.style.display = 'none';
+            hiddenButton.id = 'emergency-start-button';
+            hiddenButton.innerText = 'Emergency Start';
+            hiddenButton.addEventListener('click', function() {
+                window.startGameDirectly();
+            });
+            document.body.appendChild(hiddenButton);
+            
+            console.log("🔧 FINAL FIX: Emergency start button created");
+            
+            // Watch for clicks on the Start Game button
+            document.addEventListener('click', function(e) {
+                if (e.target && e.target.tagName === 'BUTTON' && 
+                    e.target.innerText && e.target.innerText.includes('Start Game')) {
+                    
+                    // Try to prevent normal click handling
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Use our direct implementation
+                    console.log("🔧 FINAL FIX: Start Game button clicked, using direct implementation");
+                    window.startGameDirectly();
+                    
+                    return false;
+                }
+            }, true);
+            
+        } catch (e) {
+            console.error("🔧 FINAL FIX: Error setting up emergency handlers:", e);
         }
-    }, 2000);
+    }, 3000);
     </script>
 </body>
 </html> 

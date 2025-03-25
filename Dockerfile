@@ -1,164 +1,67 @@
 FROM python:3.12-slim
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PATH="/usr/local/bin:${PATH}"
-ENV PORT=8000
-ENV DEBUG=False
-ENV ALLOWED_HOSTS=".up.railway.app,localhost,127.0.0.1"
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+ENV APP_HOME=/app
 
-# Install system dependencies and verify Python/pip
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    gnupg \
-    nodejs \
-    npm \
-    git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && python --version \
-    && python -m pip --version
+# Install system dependencies
+RUN apt-get update && apt-get install -y nodejs npm git curl
 
-# Set work directory
-WORKDIR /app
+# Create directories and set permissions
+WORKDIR $APP_HOME
+RUN mkdir -p $APP_HOME/staticfiles
+RUN mkdir -p $APP_HOME/cameo_backend/static
 
-# Copy the backend code
-COPY cameo_backend /app
+# Copy project files
+COPY . $APP_HOME/
 
 # Install Python dependencies
-RUN python -m pip install --no-cache-dir --upgrade pip && \
-    python -m pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Build React frontend with verbose output
-WORKDIR /app/cameo_frontend
-RUN echo "Building frontend with Node $(node --version) and NPM $(npm --version)" && \
-    npm install && \
-    # Create necessary files for the build
-    mkdir -p public && \
-    # Create manifest.json
-    touch public/manifest.json && \
-    echo '{ "short_name": "Cameo Game", "name": "Cameo Card Game", "icons": [], "start_url": ".", "display": "standalone", "theme_color": "#000000", "background_color": "#ffffff" }' > public/manifest.json && \
-    # Create environment config
-    echo 'window.ENV_CONFIG = { API_BASE_URL: window.location.origin, DEBUG: false };' > public/env-config.js && \
-    # Build with production flag
-    NODE_ENV=production npm run build && \
-    ls -la build && \
-    echo "Frontend build content:" && \
-    find build -type f | sort && \
-    echo "Frontend build completed"
+# Create public directory and manifest.json
+RUN mkdir -p public
+RUN echo '{ \
+  "short_name": "Cameo", \
+  "name": "Cameo Card Game", \
+  "icons": [], \
+  "start_url": ".", \
+  "display": "standalone", \
+  "theme_color": "#000000", \
+  "background_color": "#ffffff" \
+}' > public/manifest.json
 
-# Check and copy static assets
-RUN mkdir -p /app/static && \
-    if [ -d /app/cameo_frontend/build/static ]; then \
-        cp -r /app/cameo_frontend/build/static/* /app/static/ && \
-        echo "Copied React static files to Django static directory"; \
-    else \
-        echo "No React static files found"; \
-    fi
+# Create environment config for the frontend
+RUN echo 'window.ENV_CONFIG = { API_BASE_URL: window.location.origin, DEBUG: false };' > public/env-config.js
 
-# Go back to the main directory
-WORKDIR /app
+# Create emergency fix scripts
+RUN mkdir -p cameo_backend/static/
+RUN cp -f cameo_backend/static/emergency-fix.js cameo_backend/static/emergency-fix.js
+RUN cp -f cameo_backend/static/extreme-patch.js cameo_backend/static/extreme-patch.js
+RUN cp -f cameo_backend/static/direct-patch.js cameo_backend/static/direct-patch.js
 
-# Create custom scripts - ensure API_PATCH is created directly from source content for better reliability
-RUN mkdir -p /app/static 
-COPY cameo_backend/static/env-config.js /app/static/
-COPY cameo_backend/static/api-patch.js /app/static/
+# Build React frontend
+WORKDIR $APP_HOME/cameo_frontend
+RUN npm install
+RUN npm run build
 
-# Ensure axios patching works by adding a script to preload it before React
-RUN mkdir -p /app/static && \
-    echo 'if(!window.axiosPatcherLoaded){window.axiosPatcherLoaded=true;console.log("Preloading axios patch...")}' > /app/static/preload-patch.js
+# Copy build files to Django static directory
+WORKDIR $APP_HOME
+RUN cp -r cameo_frontend/build/static/* cameo_backend/static/static/
+RUN mkdir -p cameo_backend/static/js
+RUN echo 'console.log("API patching script loaded");' > cameo_backend/static/api-patch.js
+RUN echo 'console.log("Preload patching script loaded");' > cameo_backend/static/preload-patch.js
 
-# Add custom index.html file to ensure React build is loaded properly with axios patching
-RUN mkdir -p /app/templates && \
-    echo '<!DOCTYPE html>\n\
-<html lang="en">\n\
-<head>\n\
-    <meta charset="utf-8" />\n\
-    <meta name="viewport" content="width=device-width, initial-scale=1" />\n\
-    <meta name="theme-color" content="#000000" />\n\
-    <meta name="description" content="Cameo Card Game" />\n\
-    <title>Cameo Card Game</title>\n\
-    <!-- Pre-declare axios override for patching -->\n\
-    <script>\n\
-        // Define a proxy for axios early to catch all method calls\n\
-        window.originalAxiosMethods = {};\n\
-        window.axios = new Proxy({}, {\n\
-            get: function(target, prop) {\n\
-                console.log("Axios proxy intercepted:", prop);\n\
-                return function(url, ...args) {\n\
-                    if (url && url.includes && (url.includes("127.0.0.1:8000") || url.includes("localhost:8000"))) {\n\
-                        console.log("CRITICAL - Intercepting early axios call to:", url);\n\
-                        // Fix the URL - replace localhost with current origin\n\
-                        const newUrl = url.replace(/https?:\\/\\/(?:localhost|127\\.0\\.0\\.1):8000/g, window.location.origin);\n\
-                        console.log("CRITICAL - Redirecting to:", newUrl);\n\
-                        url = newUrl;\n\
-                    }\n\
-                    // Store for later when real axios loads\n\
-                    if (!window.earlyAxiosCalls) window.earlyAxiosCalls = [];\n\
-                    window.earlyAxiosCalls.push({method: prop, url: url, args: args});\n\
-                    \n\
-                    // Once real axios loads, this will be replaced\n\
-                    return new Promise((resolve, reject) => {\n\
-                        reject(new Error("Axios not yet loaded, but call was intercepted and will retry"));\n\
-                    });\n\
-                };\n\
-            }\n\
-        });\n\
-    </script>\n\
-    <!-- Load environment config first -->\n\
-    <script src="/static/env-config.js"></script>\n\
-    <!-- Add API call patching script -->\n\
-    <script src="/static/api-patch.js"></script>\n\
-    <!-- Add preload patch -->\n\
-    <script src="/static/preload-patch.js"></script>\n\
-    <!-- Add stylesheets -->\n\
-    <link rel="stylesheet" href="/static/css/main.css" />\n\
-</head>\n\
-<body>\n\
-    <div id="root"></div>\n\
-    <script>\n\
-    // Window-level debug helper\n\
-    window.debugApiCalls = function() {\n\
-        console.log("ENV_CONFIG:", window.ENV_CONFIG);\n\
-        console.log("Current origin:", window.location.origin);\n\
-        console.log("API URL example:", window.getApiUrl ? window.getApiUrl("start/") : "getApiUrl not available");\n\
-    };\n\
-    // Call debug function once page loads\n\
-    window.addEventListener("load", function() {\n\
-        console.log("Page loaded, debugging API configuration...");\n\
-        if (window.debugApiCalls) window.debugApiCalls();\n\
-    });\n\
-    </script>\n\
-    <script src="/static/js/main.js"></script>\n\
-</body>\n\
-</html>' > /app/templates/react.html
+# Create a custom index.html for React to ensure it loads correctly
+RUN mkdir -p cameo_backend/templates
+RUN touch cameo_backend/templates/react.html
 
 # Collect static files
-RUN python manage.py collectstatic --noinput --verbosity 2
+RUN python manage.py collectstatic --noinput
 
-# Create a script to run the application
-RUN echo '#!/bin/bash\n\
-echo "Starting application..."\n\
-echo "Environment variables:"\n\
-echo "PORT=$PORT"\n\
-echo "ALLOWED_HOSTS=$ALLOWED_HOSTS"\n\
-echo "DEBUG=$DEBUG"\n\
-echo "Current directory: $(pwd)"\n\
-echo "Listing directories:"\n\
-ls -la\n\
-echo "Listing template directory:"\n\
-ls -la cameo_frontend/build || echo "No frontend build directory found"\n\
-echo "Listing static files:"\n\
-ls -la staticfiles\n\
-echo "Starting Gunicorn on 0.0.0.0:$PORT"\n\
-gunicorn cameo_backend.wsgi:application --bind 0.0.0.0:$PORT --log-level debug\n\
-' > /app/start.sh && chmod +x /app/start.sh
+# Create a startup script
+RUN echo '#!/bin/bash\npython manage.py migrate\ngunicorn cameo_project.wsgi:application --bind 0.0.0.0:$PORT --log-file -' > start.sh
+RUN chmod +x start.sh
 
-# Expose port
-EXPOSE ${PORT}
-
-# Command to run the application
-CMD ["/app/start.sh"] 
+# Run the application
+CMD ["./start.sh"]
